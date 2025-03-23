@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.0
+// @version      0.1.1
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
@@ -19,6 +19,7 @@
 
     let isOriginal = GM_getValue('isOriginal', false);
     let backendUrl = GM_getValue('backendUrl', 'http://localhost:3000');
+    let minimized = GM_getValue('minimized', false);
 
     let colorScheme = {
         background: '#2d2d2d',
@@ -36,13 +37,13 @@
     container.style.position = 'fixed';
     container.style.bottom = '20px';
     container.style.left = '20px';
-    container.style.padding = '15px';
+    container.style.padding = minimized ? '10px' : '15px';
     container.style.borderRadius = '8px';
     container.style.zIndex = '9999';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.fontSize = '14px';
     container.style.lineHeight = '1.5';
-    container.style.width = '220px';
+    container.style.width = minimized ? 'auto' : '220px';
 
     const titleDiv = document.createElement('div');
     titleDiv.textContent = '下载设置';
@@ -58,7 +59,7 @@
     formContainer.style.gap = '12px';
 
     const originalFileDiv = document.createElement('div');
-    originalFileDiv.style.display = 'flex';
+    formContainer.style.display = minimized ? 'none' : 'flex';
     originalFileDiv.style.alignItems = 'center';
     originalFileDiv.style.textAlign = 'left';
 
@@ -82,7 +83,7 @@
     formContainer.appendChild(originalFileDiv);
 
     const themeDiv = document.createElement('div');
-    themeDiv.style.display = 'none';
+    titleDiv.style.display = minimized ? 'none' : 'block';
     formContainer.appendChild(themeDiv);
 
     const backendUrlDiv = document.createElement('div');
@@ -186,7 +187,7 @@
     }
 
     const toggleButton = document.createElement('button');
-    toggleButton.textContent = '-';
+    toggleButton.textContent = minimized ? '+' : '-';
     toggleButton.style.position = 'absolute';
     toggleButton.style.top = '10px';
     toggleButton.style.right = '10px';
@@ -201,10 +202,9 @@
     toggleButton.style.justifyContent = 'center';
     toggleButton.style.padding = '0';
 
-    let minimized = false;
-
     toggleButton.addEventListener('click', function () {
         minimized = !minimized;
+        GM_setValue('minimized', minimized);
 
         if (minimized) {
             toggleButton.textContent = '+';
