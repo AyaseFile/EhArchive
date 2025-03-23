@@ -46,7 +46,6 @@
             ];
             buildInputs = [
               openssl
-              sqlite
             ];
             RUST_SRC_PATH = "${rust_toolchain}/lib/rustlib/src/rust/library";
           };
