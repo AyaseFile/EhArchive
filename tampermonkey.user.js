@@ -9,6 +9,9 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
+// @updateURL    https://raw.githubusercontent.com/AyaseFile/EhArchive/main/tampermonkey.user.js
+// @downloadURL  https://raw.githubusercontent.com/AyaseFile/EhArchive/main/tampermonkey.user.js
+// @supportURL   https://github.com/AyaseFile/EhArchive/issues
 // ==/UserScript==
 
 (function () {
