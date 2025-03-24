@@ -139,31 +139,37 @@ impl DownloadManager {
                     if is_exhentai { 1 } else { 0 }
                 );
                 let output_path = format!("{}/{}.cbz", gallery_dir, filename);
-                let data = detail
-                    .download_archive(&client, is_original)
-                    .await
-                    .map_err(Error::msg)
-                    .context(format!("[{}] Archive download failed", gid_token))?;
-                g_info!(
-                    gid_token,
-                    "Archive download completed successfully ({} bytes)",
-                    data.len()
-                );
-                tokio::fs::create_dir_all(&gallery_dir)
-                    .await
-                    .with_context(|| {
-                        format!(
-                            "[{}] Failed to create directory: {}",
-                            gid_token, gallery_dir
-                        )
-                    })?;
-                g_info!(gid_token, "Writing archive to: {}", output_path);
-                tokio::fs::write(&output_path, data)
-                    .await
-                    .with_context(|| {
-                        format!("[{}] Failed to save archive to {}", gid_token, output_path)
-                    })?;
-                g_info!(gid_token, "Archive saved successfully: {}", output_path);
+
+                if PathBuf::from(&output_path).exists() {
+                    g_warn!(gid_token, "Archive already exists: {}", output_path);
+                } else {
+                    let data = detail
+                        .download_archive(&client, is_original)
+                        .await
+                        .map_err(Error::msg)
+                        .context(format!("[{}] Archive download failed", gid_token))?;
+                    g_info!(
+                        gid_token,
+                        "Archive download completed successfully ({} bytes)",
+                        data.len()
+                    );
+                    tokio::fs::create_dir_all(&gallery_dir)
+                        .await
+                        .with_context(|| {
+                            format!(
+                                "[{}] Failed to create directory: {}",
+                                gid_token, gallery_dir
+                            )
+                        })?;
+                    g_info!(gid_token, "Writing archive to: {}", output_path);
+                    tokio::fs::write(&output_path, data)
+                        .await
+                        .with_context(|| {
+                            format!("[{}] Failed to save archive to {}", gid_token, output_path)
+                        })?;
+                    g_info!(gid_token, "Archive saved successfully: {}", output_path);
+                }
+
                 let json_path = format!("{}/gallery_detail.json", gallery_dir);
                 g_info!(gid_token, "Saving gallery details to JSON: {}", json_path);
                 let json = serde_json::to_string_pretty(&detail).with_context(|| {
