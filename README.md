@@ -4,6 +4,8 @@
 
 搭配[油猴脚本](./tampermonkey.user.js)使用
 
+需要提供 E-Hentai 账号 cookies, 现存的 calibre 数据库根路径, 和保存标签翻译数据库的路径
+
 ```
 Usage: eh-archive [OPTIONS] <ARGUMENTS>
 
