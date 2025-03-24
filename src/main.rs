@@ -132,12 +132,7 @@ impl DownloadManager {
                 };
 
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
-                let filename = format!(
-                    "{}_{}_{}",
-                    detail.info.gid,
-                    detail.info.token,
-                    if is_exhentai { 1 } else { 0 }
-                );
+                let filename = format!("{}_{}", detail.info.gid, detail.info.token);
                 let output_path = format!("{}/{}.cbz", gallery_dir, filename);
 
                 if PathBuf::from(&output_path).exists() {
