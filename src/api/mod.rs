@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 
 use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -19,4 +20,10 @@ impl Display for DownloadType {
 pub struct DownloadRequest {
     pub url: String,
     pub download_type: DownloadType,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ActiveTasksResponse {
+    pub count: usize,
+    pub tasks: Vec<String>,
 }

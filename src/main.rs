@@ -3,11 +3,11 @@ mod config;
 mod g_log;
 mod tag_db;
 
-use std::{fs::File, io, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, fs::File, io, path::PathBuf, sync::Arc};
 
 use anyhow::{Context, Error, Result};
-use api::{DownloadRequest, DownloadType};
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use api::{ActiveTasksResponse, DownloadRequest, DownloadType};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get, routing::post};
 use config::Config;
 use libcalibre::{
     UpsertBookIdentifier,
@@ -47,6 +47,7 @@ struct DownloadManager {
     semaphore: Arc<Semaphore>,
     tag_db: Arc<Mutex<EhTagDb>>,
     calibre_client: Arc<Mutex<CalibreClient>>,
+    active_tasks: Arc<Mutex<HashSet<String>>>,
 }
 
 static TITLE_REGEX: Lazy<Regex> =
@@ -75,19 +76,36 @@ impl DownloadManager {
             semaphore: Arc::new(Semaphore::new(config.limit())),
             tag_db: Arc::new(Mutex::new(tag_db)),
             calibre_client: Arc::new(Mutex::new(calibre_client)),
+            active_tasks: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 
     async fn download_and_archive(&self, url: String, download_type: DownloadType) -> Result<()> {
+        {
+            let tasks = self.active_tasks.lock().await;
+            if tasks.contains(&url) {
+                warn!("Download job is already in progress: {}", url);
+                return Ok(());
+            }
+        }
+
         let semaphore = self.semaphore.clone();
         let client = self.client.clone();
         let output = self.output.clone();
         let is_exhentai = self.is_exhentai;
         let calibre_client = self.calibre_client.clone();
         let tag_db = self.tag_db.clone();
+        let active_tasks = self.active_tasks.clone();
+        let original_url = url.clone();
 
         tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
+
+            {
+                let mut tasks = active_tasks.lock().await;
+                tasks.insert(original_url.clone());
+            }
+
             let result: Result<()> = async {
                 info!("Starting download: {} (type: {})", url, download_type);
 
@@ -101,9 +119,7 @@ impl DownloadManager {
                 let detail = GalleryDetail::parse(html)
                     .map_err(Error::msg)
                     .context(format!("Failed to parse gallery details: {}", url))?;
-
                 let gid_token = format!("{}_{}", detail.info.gid, detail.info.token);
-
                 g_info!(
                     gid_token,
                     "Gallery details parsed successfully. Title: {}, Size: {}",
@@ -115,6 +131,14 @@ impl DownloadManager {
                     DownloadType::Resample => false,
                 };
 
+                let gallery_dir = format!("{}/{}", output.display(), gid_token);
+                let filename = format!(
+                    "{}_{}_{}",
+                    detail.info.gid,
+                    detail.info.token,
+                    if is_exhentai { 1 } else { 0 }
+                );
+                let output_path = format!("{}/{}.cbz", gallery_dir, filename);
                 let data = detail
                     .download_archive(&client, is_original)
                     .await
@@ -125,8 +149,6 @@ impl DownloadManager {
                     "Archive download completed successfully ({} bytes)",
                     data.len()
                 );
-
-                let gallery_dir = format!("{}/{}", output.display(), gid_token);
                 tokio::fs::create_dir_all(&gallery_dir)
                     .await
                     .with_context(|| {
@@ -135,23 +157,13 @@ impl DownloadManager {
                             gid_token, gallery_dir
                         )
                     })?;
-
-                let filename = format!(
-                    "{}_{}_{}",
-                    detail.info.gid,
-                    detail.info.token,
-                    if is_exhentai { 1 } else { 0 }
-                );
-                let output_path = format!("{}/{}.cbz", gallery_dir, filename);
                 g_info!(gid_token, "Writing archive to: {}", output_path);
-
                 tokio::fs::write(&output_path, data)
                     .await
                     .with_context(|| {
                         format!("[{}] Failed to save archive to {}", gid_token, output_path)
                     })?;
                 g_info!(gid_token, "Archive saved successfully: {}", output_path);
-
                 let json_path = format!("{}/gallery_detail.json", gallery_dir);
                 g_info!(gid_token, "Saving gallery details to JSON: {}", json_path);
                 let json = serde_json::to_string_pretty(&detail).with_context(|| {
@@ -196,10 +208,19 @@ impl DownloadManager {
 
                 g_info!(gid_token, "Book added to calibre library successfully");
 
+                {
+                    let mut tasks = active_tasks.lock().await;
+                    tasks.remove(&original_url);
+                }
+
                 Ok(())
             }
             .await;
             if let Err(e) = result {
+                {
+                    let mut tasks = active_tasks.lock().await;
+                    tasks.remove(&original_url);
+                }
                 error!("Download job failed: {}", e);
             }
         });
@@ -445,6 +466,16 @@ async fn handle_download(
     StatusCode::NO_CONTENT
 }
 
+async fn get_active_tasks(State(manager): State<DownloadManager>) -> Json<ActiveTasksResponse> {
+    let active_tasks = manager.active_tasks.lock().await;
+    let tasks = active_tasks.iter().cloned().collect();
+
+    Json(ActiveTasksResponse {
+        count: active_tasks.len(),
+        tasks,
+    })
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
@@ -458,6 +489,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/download", post(handle_download))
+        .route("/tasks", get(get_active_tasks))
         .with_state(download_manager);
 
     let addr = format!("0.0.0.0:{}", port);
