@@ -1,6 +1,6 @@
 pub mod db;
-pub mod models;
-pub mod schema;
+mod models;
+mod schema;
 
 use std::collections::HashMap;
 

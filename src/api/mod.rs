@@ -1,3 +1,7 @@
+pub mod download;
+pub mod tasks;
+mod utils;
+
 use std::fmt::{self, Display};
 
 use serde::Deserialize;
