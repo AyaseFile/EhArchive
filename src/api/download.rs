@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow};
 use axum::{Json, extract::State, http::StatusCode};
 use libeh::dto::gallery::detail::GalleryDetail;
 use log::{error, info, warn};
 use reqwest::Url;
+use serde_json::{Value, json};
 
 use super::{
     DownloadRequest, DownloadType,
@@ -15,12 +16,17 @@ use crate::{DownloadManager, g_info, g_warn};
 pub async fn handle_download(
     State(manager): State<DownloadManager>,
     Json(request): Json<DownloadRequest>,
-) -> StatusCode {
-    let _ = manager
+) -> (StatusCode, Json<Value>) {
+    match manager
         .download_and_archive(request.url, request.download_type)
-        .await;
-
-    StatusCode::NO_CONTENT
+        .await
+    {
+        Ok(_) => (StatusCode::OK, Json(json!({ "msg": "下载任务已启动" }))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "msg": format!("启动下载任务失败: {}", e) })),
+        ),
+    }
 }
 
 impl DownloadManager {
@@ -33,7 +39,7 @@ impl DownloadManager {
             let tasks = self.active_tasks.lock().await;
             if tasks.contains(&url) {
                 warn!("Download job is already in progress: {}", url);
-                return Ok(());
+                return Err(anyhow!("Download job is already in progress: {}", url));
             }
         }
 

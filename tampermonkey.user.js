@@ -208,11 +208,21 @@
                 download_type: isOriginal ? 'original' : 'resample'
             }),
             onload: function (response) {
-                showNotification('下载请求已发送!', 'success');
-                setTimeout(updateActiveTasks, 500);
+                try {
+                    const data = JSON.parse(response.responseText || '{}');
+                    const message = data.msg || '';
+                    if (response.status === 200) {
+                        showNotification(message || '下载任务已启动', 'success');
+                    } else {
+                        showNotification(message || '下载请求失败', 'error');
+                    }
+                    setTimeout(updateActiveTasks, 500);
+                } catch (e) {
+                    console.error('解析响应失败:', e);
+                }
             },
-            onerror: function (error) {
-                showNotification('发送下载请求时出错!', 'error');
+            onerror: function (e) {
+                console.error('下载请求失败:', e);
             }
         });
     }
