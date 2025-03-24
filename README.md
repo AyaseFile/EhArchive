@@ -6,6 +6,11 @@
 
 需要提供 E-Hentai 账号 cookies, 现存的 calibre 数据库根路径, 和保存标签翻译数据库的路径
 
+支持的 API:
+- `/download`: POST, 下载画廊归档, 获取元数据并入库 (calibre)
+- `tasks`: GET, 下载任务状态
+- `/import`: POST, 导入**能被后端访问**的归档, 获取元数据并入库 (calibre)
+
 ```
 Usage: eh-archive [OPTIONS] <ARGUMENTS>
 

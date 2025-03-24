@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.2
+// @version      0.1.3
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
@@ -22,6 +22,7 @@
     let minimized = GM_getValue('minimized', false);
     let activeTasks = [];
     let updateTasksInterval = null;
+    let importDialogVisible = false;
 
     let colorScheme = {
         background: '#2d2d2d',
@@ -35,7 +36,9 @@
         shadow: 'rgba(0,0,0,0.3)',
         taskBg: '#3a3a3a',
         bubbleBg: '#4a4a4a',
-        bubbleBorder: '#666666'
+        bubbleBorder: '#666666',
+        dialogBg: '#2d2d2d',
+        dialogBorder: '#666666'
     };
 
     const container = document.createElement('div');
@@ -187,12 +190,187 @@
         this.style.backgroundColor = colorScheme.buttonBg;
     });
 
+    const importButton = document.createElement('button');
+    importButton.textContent = '导入';
+    importButton.style.padding = '6px 10px';
+    importButton.style.marginTop = '6px';
+    importButton.style.fontSize = '14px';
+    importButton.style.cursor = 'pointer';
+    importButton.style.borderRadius = '4px';
+    importButton.style.fontWeight = 'bold';
+    importButton.style.width = '100%';
+    importButton.style.border = 'none';
+    importButton.style.transition = 'all 0.2s ease';
+    importButton.style.backgroundColor = colorScheme.buttonBg;
+    importButton.style.color = colorScheme.buttonText;
+    importButton.addEventListener('click', showImportDialog);
+
+    importButton.addEventListener('mouseover', function () {
+        this.style.backgroundColor = '#777777';
+    });
+    importButton.addEventListener('mouseout', function () {
+        this.style.backgroundColor = '#666666';
+    });
+
+    const importDialog = document.createElement('div');
+    importDialog.style.display = 'none';
+    importDialog.style.position = 'fixed';
+    importDialog.style.top = '50%';
+    importDialog.style.left = '50%';
+    importDialog.style.transform = 'translate(-50%, -50%)';
+    importDialog.style.backgroundColor = colorScheme.dialogBg;
+    importDialog.style.border = `1px solid ${colorScheme.dialogBorder}`;
+    importDialog.style.borderRadius = '8px';
+    importDialog.style.padding = '15px';
+    importDialog.style.boxShadow = `0 0 15px ${colorScheme.shadow}`;
+    importDialog.style.zIndex = '10001';
+    importDialog.style.minWidth = '300px';
+    importDialog.style.color = colorScheme.text;
+
+    const dialogTitle = document.createElement('div');
+    dialogTitle.textContent = '导入归档';
+    dialogTitle.style.fontWeight = 'bold';
+    dialogTitle.style.fontSize = '16px';
+    dialogTitle.style.marginBottom = '15px';
+    dialogTitle.style.textAlign = 'center';
+    importDialog.appendChild(dialogTitle);
+
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'Gallery URL:';
+    urlLabel.style.display = 'block';
+    urlLabel.style.marginBottom = '5px';
+    urlLabel.style.fontSize = '14px';
+    importDialog.appendChild(urlLabel);
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.placeholder = 'https://e-hentai.org/g/1541162/b92a79f0ff/';
+    urlInput.style.width = '100%';
+    urlInput.style.padding = '8px';
+    urlInput.style.marginBottom = '10px';
+    urlInput.style.boxSizing = 'border-box';
+    urlInput.style.borderRadius = '4px';
+    urlInput.style.backgroundColor = colorScheme.inputBg;
+    urlInput.style.border = `1px solid ${colorScheme.inputBorder}`;
+    urlInput.style.color = colorScheme.text;
+    importDialog.appendChild(urlInput);
+
+    const pathLabel = document.createElement('label');
+    pathLabel.textContent = '(能被后端访问的) 归档路径:';
+    pathLabel.style.display = 'block';
+    pathLabel.style.marginBottom = '5px';
+    pathLabel.style.fontSize = '14px';
+    importDialog.appendChild(pathLabel);
+
+    const pathInput = document.createElement('input');
+    pathInput.type = 'text';
+    pathInput.placeholder = '/path/to/your/archive.cbz';
+    pathInput.style.width = '100%';
+    pathInput.style.padding = '8px';
+    pathInput.style.marginBottom = '15px';
+    pathInput.style.boxSizing = 'border-box';
+    pathInput.style.borderRadius = '4px';
+    pathInput.style.backgroundColor = colorScheme.inputBg;
+    pathInput.style.border = `1px solid ${colorScheme.inputBorder}`;
+    pathInput.style.color = colorScheme.text;
+    importDialog.appendChild(pathInput);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'space-between';
+    buttonContainer.style.gap = '10px';
+    importDialog.appendChild(buttonContainer);
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = '取消';
+    cancelButton.style.flex = '1';
+    cancelButton.style.padding = '8px';
+    cancelButton.style.borderRadius = '4px';
+    cancelButton.style.border = 'none';
+    cancelButton.style.backgroundColor = colorScheme.buttonBg;
+    cancelButton.style.color = colorScheme.text;
+    cancelButton.style.cursor = 'pointer';
+    cancelButton.addEventListener('click', hideImportDialog);
+    buttonContainer.appendChild(cancelButton);
+
+    const confirmImportButton = document.createElement('button');
+    confirmImportButton.textContent = '导入';
+    confirmImportButton.style.flex = '1';
+    confirmImportButton.style.padding = '8px';
+    confirmImportButton.style.borderRadius = '4px';
+    confirmImportButton.style.border = 'none';
+    confirmImportButton.style.backgroundColor = '#666666';
+    confirmImportButton.style.color = colorScheme.text;
+    confirmImportButton.style.cursor = 'pointer';
+    confirmImportButton.addEventListener('click', sendImportRequest);
+    buttonContainer.appendChild(confirmImportButton);
+
+    document.body.appendChild(importDialog);
+
     if (minimized) {
         container.appendChild(downloadButton);
     } else {
         formContainer.appendChild(downloadButton);
+        formContainer.appendChild(importButton);
     }
     container.appendChild(formContainer);
+
+    function showImportDialog() {
+        importDialogVisible = true;
+        importDialog.style.display = 'block';
+        if (window.location.href.includes('/g/')) {
+            urlInput.value = window.location.href;
+        }
+    }
+
+    function hideImportDialog() {
+        importDialogVisible = false;
+        importDialog.style.display = 'none';
+        urlInput.value = '';
+        pathInput.value = '';
+    }
+
+    function sendImportRequest() {
+        const url = urlInput.value.trim();
+        const path = pathInput.value.trim();
+
+        if (!url || !path) {
+            showNotification('URL 和归档路径不能为空', 'error');
+            return;
+        }
+
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: `${backendUrl}/import`,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                url: url,
+                path: path
+            }),
+            onload: function (response) {
+                try {
+                    const data = JSON.parse(response.responseText || '{}');
+                    const message = data.msg || '';
+                    if (response.status === 200) {
+                        showNotification('导入任务已启动', 'success');
+                        hideImportDialog();
+                    } else {
+                        showNotification(message || '导入请求失败', 'error');
+                    }
+                    setTimeout(updateActiveTasks, 500);
+                } catch (e) {
+                    console.error('解析响应失败:', e);
+                    showNotification('解析响应失败', 'error');
+                }
+            },
+            onerror: function (e) {
+                console.error('导入请求失败:', e);
+                showNotification('导入请求失败', 'error');
+            }
+        });
+    }
 
     function sendDownloadRequest() {
         const currentUrl = window.location.href;
@@ -400,6 +578,7 @@
             downloadButton.style.width = '100%';
             downloadButton.style.marginTop = '4px';
             formContainer.appendChild(downloadButton);
+            formContainer.appendChild(importButton);
         }
 
         updateBubble();
@@ -432,4 +611,11 @@
     updateActiveTasks();
 
     updateTasksInterval = setInterval(updateActiveTasks, 5000);
+
+    document.addEventListener('click', function (event) {
+        if (importDialogVisible && !importDialog.contains(event.target) &&
+            event.target !== importButton && !importButton.contains(event.target)) {
+            hideImportDialog();
+        }
+    });
 })();

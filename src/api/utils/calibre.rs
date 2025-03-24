@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{Error, Result};
+use anyhow::{Result, anyhow};
 use libcalibre::{
     UpsertBookIdentifier,
     client::CalibreClient,
@@ -14,13 +14,13 @@ use libcalibre::{
         tag::NewTagDto,
     },
 };
-use libeh::dto::{gallery::detail::GalleryDetail, keyword::Keyword};
+use libeh::dto::keyword::Keyword;
 use log::info;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::sync::Mutex;
 
-use super::{parse_category, parse_tag};
+use super::{Gallery, parse_category, parse_category_str, parse_tag};
 use crate::g_info;
 use crate::tag_db::db::EhTagDb;
 
@@ -31,22 +31,51 @@ pub async fn add_to_calibre(
     calibre_client: Arc<Mutex<CalibreClient>>,
     tag_db: Arc<Mutex<EhTagDb>>,
     is_exhentai: bool,
-    cbz_path: String,
-    detail: GalleryDetail,
-    gid_token: String,
+    cbz_path: &str,
+    gallery: &Gallery,
+    gid_token: &str,
 ) -> Result<()> {
     let mut client = calibre_client.lock().await;
 
-    let title = if !detail.info.title_jpn.is_empty() {
-        &detail.info.title_jpn
+    let gallery_title;
+    let gallery_title_jpn;
+    let gallery_category;
+    let gallery_gid;
+    let gallery_token;
+    let gallery_rating;
+    let gallery_tags;
+
+    match gallery {
+        Gallery::Detail(detail) => {
+            gallery_title = &detail.info.title;
+            gallery_title_jpn = &detail.info.title_jpn;
+            gallery_category = parse_category(&detail.info.category);
+            gallery_gid = detail.info.gid;
+            gallery_token = &detail.info.token;
+            gallery_rating = &detail.info.rating;
+            gallery_tags = &detail.info.tags;
+        }
+        Gallery::Metadata(metadata) => {
+            gallery_title = &metadata.title;
+            gallery_title_jpn = &metadata.title_jpn;
+            gallery_category = parse_category_str(&metadata.category);
+            gallery_gid = metadata.gid;
+            gallery_token = &metadata.token;
+            gallery_rating = &metadata.rating;
+            gallery_tags = &metadata.tags;
+        }
+    };
+
+    let title = if !gallery_title_jpn.is_empty() {
+        gallery_title_jpn
     } else {
-        &detail.info.title
+        gallery_title
     };
     let title = TITLE_REGEX
         .captures(title)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().trim())
-        .unwrap_or(&detail.info.title);
+        .unwrap_or(gallery_title);
     let book_dto = NewBookDto {
         title: title.to_string(),
         timestamp: None,
@@ -56,13 +85,12 @@ pub async fn add_to_calibre(
         has_cover: None,
     };
 
-    let category = parse_category(&detail.info.category);
-    let category_name = match category {
+    let category_name = match gallery_category {
         Some(c) => Some(
             tag_db
                 .lock()
                 .await
-                .get_tag_name("reclass", category.unwrap())?
+                .get_tag_name("reclass", c)?
                 .unwrap_or(c.to_string()),
         ),
         None => None,
@@ -74,14 +102,16 @@ pub async fn add_to_calibre(
         label: "ehentai".to_string(),
         value: format!(
             "{}_{}_{}",
-            detail.info.gid,
-            detail.info.token,
+            gallery_gid,
+            gallery_token,
             if is_exhentai { 1 } else { 0 }
         ),
     }];
+
     let rating_dto = Some(NewRatingDto {
-        rating: (detail.info.rating * 2.0).floor() as i32,
+        rating: (gallery_rating * 2.0).floor() as i32,
     });
+
     let files_dto = Some(vec![NewLibraryFileDto {
         path: cbz_path.into(),
     }]);
@@ -91,12 +121,12 @@ pub async fn add_to_calibre(
     let mut language_dto: Option<NewLanguageDto> = None;
     let mut tags_dto: Vec<NewTagDto> = Vec::new();
 
-    for tag in detail.info.tags.iter() {
-        let (namespace, raw_tag) = parse_tag(tag);
-        if namespace.is_none() {
+    for tag in gallery_tags.iter() {
+        let result = parse_tag(tag);
+        if result.is_none() {
             continue;
         }
-        let (namespace, raw_tag) = (namespace.unwrap(), raw_tag.unwrap());
+        let (namespace, raw_tag) = result.unwrap();
         let tag_namespace = tag_db
             .lock()
             .await
@@ -107,7 +137,6 @@ pub async fn add_to_calibre(
             .await
             .get_tag_name(namespace, raw_tag)?
             .unwrap_or(raw_tag.to_string());
-        let raw_tag = raw_tag.to_string();
         match tag {
             Keyword::Artist(_) => {
                 let author_dto = NewAuthorDto {
@@ -126,7 +155,7 @@ pub async fn add_to_calibre(
             }
             Keyword::Language(_) => {
                 language_dto = Some(NewLanguageDto {
-                    lang_code: raw_tag.clone(),
+                    lang_code: raw_tag.to_string(),
                 });
                 let tag_dto = NewTagDto {
                     name: format!("{}:{}", tag_namespace, tag_name),
@@ -186,9 +215,7 @@ pub async fn add_to_calibre(
     };
 
     g_info!(gid_token, "Adding book to calibre");
-    client
-        .add_book(dto)
-        .map_err(|e| Error::msg(format!("[{}] calibre add failed: {}", gid_token, e)))?;
+    client.add_book(dto).map_err(|e| anyhow!("{}", e))?;
 
     Ok(())
 }

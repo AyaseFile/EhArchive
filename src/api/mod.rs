@@ -1,4 +1,5 @@
 pub mod download;
+pub mod import;
 pub mod tasks;
 mod utils;
 
@@ -30,4 +31,10 @@ pub struct DownloadRequest {
 pub struct ActiveTasksResponse {
     pub count: usize,
     pub tasks: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ImportRequest {
+    pub url: String,
+    pub path: String,
 }

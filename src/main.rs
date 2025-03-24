@@ -16,7 +16,7 @@ use libeh::{
 };
 use tokio::sync::{Mutex, Semaphore};
 
-use api::{download::handle_download, tasks::get_active_tasks};
+use api::{download::handle_download, import::handle_import, tasks::get_active_tasks};
 use config::Config;
 use tag_db::db::EhTagDb;
 
@@ -73,6 +73,7 @@ async fn main() {
     let app = Router::new()
         .route("/download", post(handle_download))
         .route("/tasks", get(get_active_tasks))
+        .route("/import", post(handle_import))
         .with_state(download_manager);
 
     let addr = format!("0.0.0.0:{}", port);

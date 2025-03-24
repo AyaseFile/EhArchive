@@ -522,9 +522,9 @@ checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "deranged"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
+checksum = "28cfac68e08048ae1883171632c2aef3ebc555621ae56fbccce1cbf22dd7f058"
 dependencies = [
  "powerfmt",
 ]
@@ -705,7 +705,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "uuid",
- "zip 2.4.2",
+ "zip 2.5.0",
 ]
 
 [[package]]
@@ -818,7 +818,7 @@ checksum = "f7425903972972788e21d4a8cbec3589c232cca4fab21d320187a8e452f6465e"
 dependencies = [
  "percent-encoding",
  "regex",
- "thiserror 1.0.69",
+ "thiserror",
  "xml-rs",
  "zip 1.1.4",
 ]
@@ -1259,14 +1259,15 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.61"
+version = "0.1.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "235e081f3925a06703c2d0117ea8b91f042756fd6e7a6e5d901e8ca1a996b220"
+checksum = "b2fd658b06e56721792c5df4475705b6cda790e9298d19d2f8af083457bcd127"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
+ "log",
  "wasm-bindgen",
  "windows-core",
 ]
@@ -1552,7 +1553,7 @@ dependencies = [
 [[package]]
 name = "libeh"
 version = "0.1.1"
-source = "git+https://github.com/AyaseFile/EhRust#0c62eba9b0a8771afee7bf10f6ac15432e057cb9"
+source = "git+https://github.com/AyaseFile/EhRust#ac5e6a6d001f6b9170b2297e07fb09771bdc23a0"
 dependencies = [
  "chrono",
  "cookie",
@@ -1613,9 +1614,9 @@ checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
 
 [[package]]
 name = "log"
-version = "0.4.26"
+version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
+checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "lzma-rs"
@@ -1736,7 +1737,7 @@ checksum = "8f3f8e34216126be00a189105bda27462e1743d59cd4e15d6b99ff4af051b1b4"
 dependencies = [
  "encoding",
  "indexmap 1.9.3",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
@@ -2678,16 +2679,7 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
-version = "2.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
-dependencies = [
- "thiserror-impl 2.0.12",
+ "thiserror-impl",
 ]
 
 [[package]]
@@ -2702,21 +2694,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "thiserror-impl"
-version = "2.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "time"
-version = "0.3.40"
+version = "0.3.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d9c75b47bdff86fa3334a3db91356b8d7d86a9b839dab7d0bdc5c3d3a077618"
+checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
 dependencies = [
  "deranged",
  "itoa",
@@ -2735,9 +2716,9 @@ checksum = "c9e9a38711f559d9e3ce1cdb06dd7c5b8ea546bc90052da6d06bb76da74bb07c"
 
 [[package]]
 name = "time-macros"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29aa485584182073ed57fd5004aa09c371f021325014694e432313345865fd04"
+checksum = "3526739392ec93fd8b359c8e98514cb3e8e021beb4e5f597b00a0221f8ed8a49"
 dependencies = [
  "num-conv",
  "time-core",
@@ -3520,14 +3501,14 @@ dependencies = [
  "flate2",
  "indexmap 2.8.0",
  "num_enum",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
 name = "zip"
-version = "2.4.2"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+checksum = "27c03817464f64e23f6f37574b4fdc8cf65925b5bfd2b0f2aedf959791941f88"
 dependencies = [
  "aes",
  "arbitrary",
@@ -3536,7 +3517,6 @@ dependencies = [
  "crc32fast",
  "crossbeam-utils",
  "deflate64",
- "displaydoc",
  "flate2",
  "getrandom 0.3.2",
  "hmac",
@@ -3545,7 +3525,6 @@ dependencies = [
  "memchr",
  "pbkdf2",
  "sha1",
- "thiserror 2.0.12",
  "time",
  "xz2",
  "zeroize",

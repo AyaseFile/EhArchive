@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use diesel::connection::Connection as DieselConnection;
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -28,8 +28,7 @@ impl EhTagDb {
 
         info!("Opening or creating database at: {}", db_path_str);
 
-        let conn = SqliteConnection::establish(&db_path_str)
-            .context(format!("Failed to open SQLite database at {}", db_path_str))?;
+        let conn = SqliteConnection::establish(&db_path_str)?;
 
         let mut db = Self { conn };
         db.init()?;
@@ -77,10 +76,7 @@ impl EhTagDb {
         for namespace in NAMESPACES {
             info!("Processing namespace: {}", namespace);
 
-            let tag_list = Self::read_tags_from_json(&json_data, namespace).context(format!(
-                "Failed to read JSON data for namespace: {}",
-                namespace
-            ))?;
+            let tag_list = Self::read_tags_from_json(&json_data, namespace)?;
 
             info!(
                 "Updating database with {} tags for namespace {}",
@@ -88,11 +84,7 @@ impl EhTagDb {
                 namespace
             );
 
-            self.update_namespace(namespace, &tag_list)
-                .context(format!(
-                    "Failed to update database for namespace: {}",
-                    namespace
-                ))?;
+            self.update_namespace(namespace, &tag_list)?;
         }
 
         info!("Updating stored version to {}", latest_tag);
@@ -268,9 +260,7 @@ impl EhTagDb {
             table_name
         );
 
-        sql_query(create_table_sql)
-            .execute(&mut self.conn)
-            .context(format!("Failed to create table: {}", table_name))?;
+        sql_query(create_table_sql).execute(&mut self.conn)?;
 
         Ok(())
     }
@@ -282,8 +272,7 @@ impl EhTagDb {
                 value TEXT NOT NULL
             )",
         )
-        .execute(&mut self.conn)
-        .context("Failed to create metadata table")?;
+        .execute(&mut self.conn)?;
 
         Ok(())
     }
@@ -296,18 +285,13 @@ impl EhTagDb {
             .user_agent(USER_AGENT)
             .build()?;
 
-        let response = client
-            .get(&url)
-            .send()
-            .context("Failed to fetch GitHub tags")?;
+        let response = client.get(&url).send()?;
 
         if !response.status().is_success() {
             return Err(anyhow!("GitHub API returned status {}", response.status()));
         }
 
-        let tags: Vec<GitHubTag> = response
-            .json()
-            .context("Failed to parse GitHub tags response")?;
+        let tags: Vec<GitHubTag> = response.json()?;
 
         if tags.is_empty() {
             return Err(anyhow!("No tags found for repository {}", REPO));
@@ -339,8 +323,7 @@ impl EhTagDb {
             .on_conflict(metadata_dsl::key)
             .do_update()
             .set(metadata_dsl::value.eq(&version_record.value))
-            .execute(&mut self.conn)
-            .context("Failed to update stored version")?;
+            .execute(&mut self.conn)?;
 
         Ok(())
     }
@@ -356,10 +339,7 @@ impl EhTagDb {
             .user_agent(USER_AGENT)
             .build()?;
 
-        let response = client
-            .get(&url)
-            .send()
-            .context(format!("Failed to fetch JSON from {}", url))?;
+        let response = client.get(&url).send()?;
 
         if !response.status().is_success() {
             return Err(anyhow!(
@@ -369,9 +349,7 @@ impl EhTagDb {
             ));
         }
 
-        let json_data: EhTagJson = response
-            .json()
-            .context("Failed to parse EhTag JSON response")?;
+        let json_data: EhTagJson = response.json()?;
 
         Ok(json_data)
     }
