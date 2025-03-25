@@ -31,6 +31,14 @@ pub async fn handle_download(
 
 impl DownloadManager {
     async fn download_and_archive(&self, url: String, download_type: DownloadType) -> Result<()> {
+        let is_exhentai = self.is_exhentai;
+
+        let original_url = if is_exhentai {
+            url.replace("e-hentai.org", "exhentai.org")
+        } else {
+            url.replace("exhentai.org", "e-hentai.org")
+        };
+
         {
             let tasks = self.active_tasks.lock().await;
             if tasks.contains(&url) {
@@ -42,11 +50,9 @@ impl DownloadManager {
         let semaphore = self.semaphore.clone();
         let client = self.client.clone();
         let output = self.output.clone();
-        let is_exhentai = self.is_exhentai;
         let calibre_client = self.calibre_client.clone();
         let tag_db = self.tag_db.clone();
         let active_tasks = self.active_tasks.clone();
-        let original_url = url.clone();
 
         tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
