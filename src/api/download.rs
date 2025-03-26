@@ -33,11 +33,13 @@ impl DownloadManager {
     async fn download_and_archive(&self, url: String, download_type: DownloadType) -> Result<()> {
         let is_exhentai = self.is_exhentai;
 
-        let original_url = if is_exhentai {
+        let url = if is_exhentai {
             url.replace("e-hentai.org", "exhentai.org")
         } else {
             url.replace("exhentai.org", "e-hentai.org")
         };
+
+        let original_url = url.clone();
 
         {
             let tasks = self.active_tasks.lock().await;
