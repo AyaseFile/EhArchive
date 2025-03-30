@@ -206,10 +206,10 @@
     importButton.addEventListener('click', showImportDialog);
 
     importButton.addEventListener('mouseover', function () {
-        this.style.backgroundColor = '#777777';
+        this.style.backgroundColor = colorScheme.buttonHover;
     });
     importButton.addEventListener('mouseout', function () {
-        this.style.backgroundColor = '#666666';
+        this.style.backgroundColor = colorScheme.buttonBg;
     });
 
     const importDialog = document.createElement('div');
@@ -576,7 +576,7 @@
             container.style.paddingTop = '0px';
             container.style.width = '200px';
             downloadButton.style.width = '100%';
-            downloadButton.style.marginTop = '4px';
+            downloadButton.style.marginTop = '6px';
             formContainer.appendChild(downloadButton);
             formContainer.appendChild(importButton);
         }
@@ -599,6 +599,9 @@
 
         downloadButton.style.backgroundColor = colorScheme.buttonBg;
         downloadButton.style.color = colorScheme.buttonText;
+
+        importButton.style.backgroundColor = colorScheme.buttonBg;
+        importButton.style.color = colorScheme.buttonText;
 
         toggleButton.style.backgroundColor = colorScheme.buttonBg;
         toggleButton.style.color = colorScheme.buttonText;
