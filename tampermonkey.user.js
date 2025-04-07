@@ -20,6 +20,7 @@
     let isOriginal = GM_getValue('isOriginal', false);
     let backendUrl = GM_getValue('backendUrl', 'http://localhost:3000');
     let minimized = GM_getValue('minimized', false);
+    let importBasePath = GM_getValue('importBasePath', '');
     let activeTasks = [];
     let updateTasksInterval = null;
     let importDialogVisible = false;
@@ -344,6 +345,10 @@
         if (window.location.href.includes('/g/')) {
             urlInput.value = window.location.href;
         }
+
+        if (importBasePath) {
+            pathInput.value = importBasePath;
+        }
     }
 
     function hideImportDialog() {
@@ -353,6 +358,14 @@
         pathInput.value = '';
     }
 
+    function getDirectoryPath(fullPath) {
+        const lastSlashIndex = fullPath.lastIndexOf('/');
+        if (lastSlashIndex === -1) {
+            return '';
+        }
+        return fullPath.substring(0, lastSlashIndex + 1);
+    }
+
     function sendImportRequest() {
         const url = urlInput.value.trim();
         const path = pathInput.value.trim();
@@ -360,6 +373,12 @@
         if (!url || !path) {
             showNotification('URL 和归档路径不能为空', 'error');
             return;
+        }
+
+        const directoryPath = getDirectoryPath(path);
+        if (directoryPath) {
+            importBasePath = directoryPath;
+            GM_setValue('importBasePath', importBasePath);
         }
 
         GM_xmlhttpRequest({
