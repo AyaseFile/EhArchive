@@ -212,6 +212,28 @@
         this.style.backgroundColor = colorScheme.buttonBg;
     });
 
+    const updateTagButton = document.createElement('button');
+    updateTagButton.textContent = '更新元数据翻译';
+    updateTagButton.style.padding = '6px 10px';
+    updateTagButton.style.marginTop = '6px';
+    updateTagButton.style.fontSize = '14px';
+    updateTagButton.style.cursor = 'pointer';
+    updateTagButton.style.borderRadius = '4px';
+    updateTagButton.style.fontWeight = 'bold';
+    updateTagButton.style.width = '100%';
+    updateTagButton.style.border = 'none';
+    updateTagButton.style.transition = 'all 0.2s ease';
+    updateTagButton.style.backgroundColor = colorScheme.buttonBg;
+    updateTagButton.style.color = colorScheme.buttonText;
+    updateTagButton.addEventListener('click', sendTagUpdateRequest);
+
+    updateTagButton.addEventListener('mouseover', function () {
+        this.style.backgroundColor = colorScheme.buttonHover;
+    });
+    updateTagButton.addEventListener('mouseout', function () {
+        this.style.backgroundColor = colorScheme.buttonBg;
+    });
+
     const importDialog = document.createElement('div');
     importDialog.style.display = 'none';
     importDialog.style.position = 'fixed';
@@ -312,6 +334,7 @@
     } else {
         formContainer.appendChild(downloadButton);
         formContainer.appendChild(importButton);
+        formContainer.appendChild(updateTagButton);
     }
     container.appendChild(formContainer);
 
@@ -401,6 +424,33 @@
             },
             onerror: function (e) {
                 console.error('下载请求失败:', e);
+            }
+        });
+    }
+
+    function sendTagUpdateRequest() {
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: `${backendUrl}/calibre/metadata/update`,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            onload: function (response) {
+                try {
+                    const data = JSON.parse(response.responseText || '{}');
+                    if (response.status === 200 && data.success) {
+                        showNotification(data.message || '元数据翻译更新成功', 'success');
+                    } else {
+                        showNotification(data.message || '元数据翻译更新失败', 'error');
+                    }
+                } catch (e) {
+                    console.error('解析响应失败:', e);
+                    showNotification('解析响应失败', 'error');
+                }
+            },
+            onerror: function (e) {
+                console.error('元数据翻译更新请求失败:', e);
+                showNotification('元数据翻译更新请求失败', 'error');
             }
         });
     }
@@ -579,6 +629,7 @@
             downloadButton.style.marginTop = '6px';
             formContainer.appendChild(downloadButton);
             formContainer.appendChild(importButton);
+            formContainer.appendChild(updateTagButton);
         }
 
         updateBubble();
@@ -602,6 +653,9 @@
 
         importButton.style.backgroundColor = colorScheme.buttonBg;
         importButton.style.color = colorScheme.buttonText;
+
+        updateTagButton.style.backgroundColor = colorScheme.buttonBg;
+        updateTagButton.style.color = colorScheme.buttonText;
 
         toggleButton.style.backgroundColor = colorScheme.buttonBg;
         toggleButton.style.color = colorScheme.buttonText;

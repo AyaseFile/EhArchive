@@ -9,9 +9,9 @@ use serde_json::{Value, json};
 
 use super::{
     ImportRequest,
-    utils::{calibre::add_to_calibre, extract_cover},
+    utils::{Gallery, calibre::add_to_calibre, extract_cover},
 };
-use crate::{DownloadManager, api::utils::Gallery, g_info, g_warn};
+use crate::{DownloadManager, g_info, g_warn};
 
 const EH_API_URL: &str = "https://api.e-hentai.org/api.php";
 

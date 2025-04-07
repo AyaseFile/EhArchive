@@ -1,3 +1,4 @@
+pub mod calibre;
 pub mod download;
 pub mod import;
 pub mod tasks;
@@ -37,4 +38,10 @@ pub struct ActiveTasksResponse {
 pub struct ImportRequest {
     pub url: String,
     pub path: String,
+}
+
+#[derive(Serialize)]
+pub struct TagUpdateResponse {
+    success: bool,
+    message: String,
 }

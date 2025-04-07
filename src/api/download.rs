@@ -9,9 +9,9 @@ use serde_json::{Value, json};
 
 use super::{
     DownloadRequest, DownloadType,
-    utils::{calibre::add_to_calibre, extract_cover},
+    utils::{Gallery, calibre::add_to_calibre, extract_cover},
 };
-use crate::{DownloadManager, api::utils::Gallery, g_info, g_warn};
+use crate::{DownloadManager, g_info, g_warn};
 
 pub async fn handle_download(
     State(manager): State<DownloadManager>,

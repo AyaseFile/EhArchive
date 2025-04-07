@@ -431,4 +431,34 @@ impl EhTagDb {
 
         operations
     }
+
+    pub fn get_all_tags(&mut self) -> Result<HashMap<String, HashMap<String, String>>> {
+        let mut all_tags = HashMap::new();
+
+        for namespace in NAMESPACES {
+            let table_name = if *namespace == "group" {
+                "groups"
+            } else {
+                namespace
+            };
+
+            let dyn_table = table(table_name);
+            let raw_col = dyn_table.column::<Text, _>("raw");
+            let name_col = dyn_table.column::<Text, _>("name");
+
+            let results: Vec<(String, String)> =
+                dyn_table
+                    .select((raw_col, name_col))
+                    .load::<(String, String)>(&mut self.conn)?;
+
+            let mut tags_map = HashMap::new();
+            for (raw, name) in results {
+                tags_map.insert(raw, name);
+            }
+
+            all_tags.insert(namespace.to_string(), tags_map);
+        }
+
+        Ok(all_tags)
+    }
 }

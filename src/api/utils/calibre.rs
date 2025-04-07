@@ -219,3 +219,107 @@ pub async fn add_to_calibre(
 
     Ok(())
 }
+
+pub async fn update_tag_trans(
+    calibre_client: Arc<Mutex<CalibreClient>>,
+    tag_db: Arc<Mutex<EhTagDb>>,
+) -> Result<()> {
+    let mut client = calibre_client.lock().await;
+    let mut tag_db = tag_db.lock().await;
+
+    let tags_in_tag_db = tag_db.get_all_tags()?;
+    let rows_in_tag_db = tags_in_tag_db.get("rows").unwrap();
+    let authors_in_calibre = client.get_all_authors().map_err(|e| anyhow!("{}", e))?;
+    let publishers_in_calibre = client.get_all_publishers().map_err(|e| anyhow!("{}", e))?;
+    let tags_in_calibre = client.get_all_tags().map_err(|e| anyhow!("{}", e))?;
+
+    let mut updated_count = 0;
+
+    for author in authors_in_calibre {
+        let namespace = "artist";
+        let raw_tag = &author.name;
+        let author_name = tags_in_tag_db.get(namespace).unwrap().get(raw_tag);
+        if author_name.is_none() {
+            continue;
+        }
+        let author_name = author_name.unwrap();
+        client
+            .replace_author_with_translation(author.id, author_name)
+            .map_err(|e| anyhow!("{}", e))?;
+        log::info!(
+            "Replaced author {} with translation {}",
+            raw_tag,
+            author_name
+        );
+        updated_count += 1;
+    }
+
+    if updated_count != 0 {
+        log::info!("Updated {} authors in calibre", updated_count);
+    } else {
+        log::info!("No authors to update in calibre");
+    }
+
+    updated_count = 0;
+
+    for publisher in publishers_in_calibre {
+        let namespace = "group";
+        let raw_tag = &publisher.name;
+        let publisher_name = tags_in_tag_db.get(namespace).unwrap().get(raw_tag);
+        if publisher_name.is_none() {
+            continue;
+        }
+        let publisher_name = publisher_name.unwrap();
+        client
+            .replace_publisher_with_translation(publisher.id, publisher_name)
+            .map_err(|e| anyhow!("{}", e))?;
+        log::info!(
+            "Replaced publisher {} with translation {}",
+            raw_tag,
+            publisher_name
+        );
+        updated_count += 1;
+    }
+
+    if updated_count != 0 {
+        log::info!("Updated {} publishers in calibre", updated_count);
+    } else {
+        log::info!("No publishers to update in calibre");
+    }
+
+    updated_count = 0;
+
+    for tag in tags_in_calibre {
+        let parts: Vec<_> = tag.name.split(':').collect();
+
+        if parts.len() != 2 {
+            continue;
+        }
+
+        let namespace = parts[0];
+        let raw_tag = parts[1];
+
+        if let (Some(tags_map), Some(tag_namespace)) =
+            (tags_in_tag_db.get(namespace), rows_in_tag_db.get(namespace))
+        {
+            let tag_name = tags_map.get(raw_tag);
+            if tag_name.is_none() {
+                continue;
+            }
+            let translation = format!("{}:{}", tag_namespace, tag_name.unwrap());
+            client
+                .replace_tag_with_translation(tag.id, &translation)
+                .map_err(|e| anyhow!("{}", e))?;
+            log::info!("Replaced tag {} with translation {}", tag.name, translation);
+            updated_count += 1;
+        }
+    }
+
+    if updated_count != 0 {
+        log::info!("Updated {} tags in calibre", updated_count);
+    } else {
+        log::info!("No tags to update in calibre");
+    }
+
+    Ok(())
+}
