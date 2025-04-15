@@ -1555,7 +1555,7 @@ dependencies = [
 [[package]]
 name = "libeh"
 version = "0.1.1"
-source = "git+https://github.com/AyaseFile/EhRust#fcc99664c8ed697df5d7990d2311bfce2f5a2a6d"
+source = "git+https://github.com/AyaseFile/EhRust#ad550fb09d5e624aa94ee6e99f9740ab09c5d286"
 dependencies = [
  "chrono",
  "cookie",
