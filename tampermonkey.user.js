@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.4
+// @version      0.1.5
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
