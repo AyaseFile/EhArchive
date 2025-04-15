@@ -121,7 +121,7 @@ pub async fn add_to_calibre(
     let mut language_dto: Option<NewLanguageDto> = None;
     let mut tags_dto: Vec<NewTagDto> = Vec::new();
 
-    for tag in gallery_tags.iter() {
+    for tag in gallery_tags {
         let result = parse_tag(tag);
         if result.is_none() {
             continue;

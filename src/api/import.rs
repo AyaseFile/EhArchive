@@ -63,7 +63,7 @@ impl DownloadManager {
                     .into_iter()
                     .next()
                     .ok_or_else(|| anyhow!("No metadata found"))?;
-                let gid_token = &format!("{}_{}", metadata.gid, metadata.token);
+                let gid_token = format!("{}_{}", metadata.gid, metadata.token);
                 g_info!(
                     gid_token,
                     "Gallery metadata parsed successfully. Title: {}",
@@ -71,7 +71,7 @@ impl DownloadManager {
                 );
 
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
-                let filename = gid_token;
+                let filename = &gid_token;
                 let output_path = format!("{}/{}.cbz", gallery_dir, filename);
 
                 if PathBuf::from(&output_path).exists() {
@@ -105,7 +105,7 @@ impl DownloadManager {
                     is_exhentai,
                     &output_path,
                     &Gallery::Metadata(metadata),
-                    gid_token,
+                    &gid_token,
                 )
                 .await?;
                 g_info!(gid_token, "Book added to calibre library successfully");

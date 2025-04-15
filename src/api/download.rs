@@ -39,8 +39,6 @@ impl DownloadManager {
             url.replace("exhentai.org", "e-hentai.org")
         };
 
-        let original_url = url.clone();
-
         {
             let tasks = self.active_tasks.lock().await;
             if tasks.contains(&url) {
@@ -61,16 +59,18 @@ impl DownloadManager {
 
             {
                 let mut tasks = active_tasks.lock().await;
-                tasks.insert(original_url.clone());
+                tasks.insert(url.clone());
             }
 
             let result: Result<()> = async {
                 info!("Starting download: {} (type: {})", url, download_type);
 
-                let url = Url::parse(&url)?;
-                let html = client.get_html(url).await.map_err(|e| anyhow!(e))?;
+                let html = client
+                    .get_html(Url::parse(&url)?)
+                    .await
+                    .map_err(|e| anyhow!(e))?;
                 let detail = GalleryDetail::parse(html).map_err(|e| anyhow!(e))?;
-                let gid_token = &format!("{}_{}", detail.info.gid, detail.info.token);
+                let gid_token = format!("{}_{}", detail.info.gid, detail.info.token);
                 g_info!(
                     gid_token,
                     "Gallery details parsed successfully. Title: {}, Size: {}",
@@ -79,7 +79,7 @@ impl DownloadManager {
                 );
 
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
-                let filename = gid_token;
+                let filename = &gid_token;
                 let output_path = format!("{}/{}.cbz", gallery_dir, filename);
 
                 if PathBuf::from(&output_path).exists() {
@@ -127,14 +127,14 @@ impl DownloadManager {
                     is_exhentai,
                     &output_path,
                     &Gallery::Detail(detail),
-                    gid_token,
+                    &gid_token,
                 )
                 .await?;
                 g_info!(gid_token, "Book added to calibre library successfully");
 
                 {
                     let mut tasks = active_tasks.lock().await;
-                    tasks.remove(&original_url);
+                    tasks.remove(&url);
                 }
 
                 Ok(())
@@ -143,9 +143,9 @@ impl DownloadManager {
             if let Err(e) = result {
                 {
                     let mut tasks = active_tasks.lock().await;
-                    tasks.remove(&original_url);
+                    tasks.remove(&url);
                 }
-                error!("Download job failed for URL {}: {:?}", original_url, e);
+                error!("Download job failed for URL {}: {:?}", url, e);
             }
         });
 

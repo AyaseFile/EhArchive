@@ -62,21 +62,21 @@ impl EhTagDb {
 
         for namespace in NAMESPACES {
             let table_name = if *namespace == "group" {
-                "groups".to_string()
+                "groups"
             } else {
-                namespace.to_string()
+                namespace
             };
-            self.ensure_table_exists(&table_name)?;
+            self.ensure_table_exists(table_name)?;
         }
 
         info!("Fetching JSON data from GitHub");
-        let json_data = Self::fetch_json_from_github(&latest_tag)?;
+        let mut json_data = Self::fetch_json_from_github(&latest_tag)?;
         info!("Successfully fetched JSON data");
 
         for namespace in NAMESPACES {
             info!("Processing namespace: {}", namespace);
 
-            let tag_list = Self::read_tags_from_json(&json_data, namespace)?;
+            let tag_list = Self::extract_tags_from_json(&mut json_data, namespace)?;
 
             info!(
                 "Updating database with {} tags for namespace {}",
@@ -84,11 +84,11 @@ impl EhTagDb {
                 namespace
             );
 
-            self.update_namespace(namespace, &tag_list)?;
+            self.update_namespace(namespace, tag_list)?;
         }
 
         info!("Updating stored version to {}", latest_tag);
-        self.update_stored_version(&latest_tag)?;
+        self.update_stored_version(latest_tag)?;
         Ok(())
     }
 
@@ -115,9 +115,9 @@ impl EhTagDb {
     fn get_existing_tags(
         &mut self,
         namespace: &str,
-        raw_values: &[String],
+        raw_values: Vec<&String>,
     ) -> Result<HashMap<String, (String, String, String)>> {
-        let mut existing_records = HashMap::new();
+        let mut existing_records = HashMap::with_capacity(raw_values.len());
 
         if raw_values.is_empty() {
             return Ok(existing_records);
@@ -136,38 +136,37 @@ impl EhTagDb {
         let links_col = dyn_table.column::<Text, _>("links");
 
         for chunk in raw_values.chunks(CHUNK_SIZE) {
-            for raw_val in chunk {
-                let result = dyn_table
-                    .select((raw_col, name_col, intro_col, links_col))
-                    .filter(raw_col.eq(raw_val))
-                    .first::<(String, String, String, String)>(&mut self.conn)
-                    .optional()?;
+            let results = dyn_table
+                .select((raw_col, name_col, intro_col, links_col))
+                .filter(raw_col.eq_any(chunk))
+                .load::<(String, String, String, String)>(&mut self.conn)?;
 
-                if let Some((raw, name, intro, links)) = result {
-                    existing_records.insert(raw, (name, intro, links));
-                }
+            for (raw, name, intro, links) in results {
+                existing_records.insert(raw, (name, intro, links));
             }
         }
 
         Ok(existing_records)
     }
 
-    fn update_namespace(&mut self, namespace: &str, tag_list: &[Vec<String>]) -> Result<()> {
+    fn update_namespace(
+        &mut self,
+        namespace: &str,
+        tag_list: Vec<(String, String, String, String)>,
+    ) -> Result<()> {
         info!("Updating namespace: {}", namespace);
 
-        let mut raw_values = Vec::new();
-        for tags in tag_list {
-            if !tags.is_empty() {
-                raw_values.push(tags[0].trim().to_string());
-            }
+        let mut raw_values = Vec::with_capacity(tag_list.len());
+        for tags in &tag_list {
+            raw_values.push(&tags.0);
         }
 
         info!("Getting existing tags for namespace {}", namespace);
-        let existing_records = self.get_existing_tags(namespace, &raw_values)?;
+        let existing_records = self.get_existing_tags(namespace, raw_values)?;
         info!("Found {} existing records", existing_records.len());
 
         info!("Determining operations needed");
-        let operations = Self::determine_operations(tag_list, &existing_records);
+        let operations = Self::get_operations(tag_list, existing_records);
 
         info!("Executing database operations");
         let (inserts, updates, skips) = self.execute_operations(namespace, operations)?;
@@ -185,6 +184,7 @@ impl EhTagDb {
         namespace: &str,
         operations: Vec<TagOperation>,
     ) -> Result<(usize, usize, usize)> {
+        let total = operations.len();
         let mut inserts = 0;
         let mut updates = 0;
         let mut skips = 0;
@@ -195,17 +195,9 @@ impl EhTagDb {
             namespace
         };
 
-        let insert_ops: Vec<_> = operations
-            .iter()
-            .filter(|op| matches!(op.operation, TagAction::Insert))
-            .collect();
-
-        let update_ops: Vec<_> = operations
-            .iter()
-            .filter(|op| matches!(op.operation, TagAction::Update))
-            .collect();
-
-        let skips_count = operations.len() - insert_ops.len() - update_ops.len();
+        let (insert_ops, update_ops): (Vec<_>, Vec<_>) = operations
+            .into_iter()
+            .partition(|op| matches!(op.operation, TagAction::Insert));
 
         self.conn
             .transaction::<_, diesel::result::Error, _>(|conn| {
@@ -239,7 +231,7 @@ impl EhTagDb {
 
                 inserts = insert_ops.len();
                 updates = update_ops.len();
-                skips = skips_count;
+                skips = total - inserts - updates;
 
                 Ok(())
             })?;
@@ -297,7 +289,8 @@ impl EhTagDb {
             return Err(anyhow!("No tags found for repository {}", REPO));
         }
 
-        Ok(tags.first().unwrap().name.clone())
+        let first_tag = tags.into_iter().next().unwrap();
+        Ok(first_tag.name)
     }
 
     fn get_stored_version(&mut self) -> Result<Option<String>> {
@@ -312,10 +305,10 @@ impl EhTagDb {
         Ok(result)
     }
 
-    fn update_stored_version(&mut self, version: &str) -> Result<()> {
+    fn update_stored_version(&mut self, version: String) -> Result<()> {
         let version_record = Metadata {
             key: "github_tag".to_string(),
-            value: version.to_string(),
+            value: version,
         };
 
         diesel::insert_into(metadata_dsl::metadata)
@@ -354,51 +347,52 @@ impl EhTagDb {
         Ok(json_data)
     }
 
-    fn read_tags_from_json(json_data: &EhTagJson, namespace: &str) -> Result<Vec<Vec<String>>> {
-        let namespace_data = json_data
+    fn extract_tags_from_json(
+        json_data: &mut EhTagJson,
+        namespace: &str,
+    ) -> Result<Vec<(String, String, String, String)>> {
+        let namespace_index = json_data
             .data
             .iter()
-            .find(|ns| ns.namespace == namespace)
+            .position(|ns| ns.namespace == namespace)
             .ok_or_else(|| anyhow!("Namespace '{}' not found in JSON data", namespace))?;
 
-        let mut tag_entries = Vec::new();
+        let mut namespace_data = json_data.data.remove(namespace_index);
 
-        for (raw_tag, tag_data) in &namespace_data.data {
-            if Self::check(raw_tag) {
-                let tag_parts = vec![
-                    raw_tag.clone(),
-                    tag_data.name.clone(),
-                    tag_data.intro.clone(),
-                    tag_data.links.clone(),
-                ];
-                tag_entries.push(tag_parts);
+        let capacity = namespace_data.data.len();
+        let mut tags = Vec::with_capacity(capacity);
+
+        for (raw_tag, tag_data) in namespace_data.data.drain() {
+            if Self::check(&raw_tag) {
+                let tag = (raw_tag, tag_data.name, tag_data.intro, tag_data.links);
+                tags.push(tag);
             }
         }
 
         debug!(
             "Read {} tag entries for namespace {}",
-            tag_entries.len(),
+            tags.len(),
             namespace
         );
 
-        Ok(tag_entries)
+        Ok(tags)
     }
 
     fn check(s: &str) -> bool {
         ALPHA_REGEX.is_match(s)
     }
 
-    fn determine_operations(
-        tag_list: &[Vec<String>],
-        existing_records: &HashMap<String, (String, String, String)>,
+    fn get_operations(
+        tag_list: Vec<(String, String, String, String)>,
+        existing_records: HashMap<String, (String, String, String)>,
     ) -> Vec<TagOperation> {
         let mut operations = Vec::with_capacity(tag_list.len());
 
         for tags in tag_list {
-            let raw_value = tags.first().cloned().unwrap_or_default().trim().to_string();
-            let name = tags.get(1).cloned().unwrap_or_default().trim().to_string();
-            let intro = tags.get(2).cloned().unwrap_or_default().trim().to_string();
-            let links = tags.get(3).cloned().unwrap_or_default().trim().to_string();
+            let raw_value = tags.0;
+            let name = tags.1;
+            let intro = tags.2;
+            let links = tags.3;
 
             if let Some((db_name, db_intro, db_links)) = existing_records.get(&raw_value) {
                 if &name != db_name || &intro != db_intro || &links != db_links {
