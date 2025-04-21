@@ -21,8 +21,8 @@ use regex::Regex;
 use tokio::sync::Mutex;
 
 use super::{Gallery, parse_category, parse_category_str, parse_tag};
-use crate::g_info;
 use crate::tag_db::db::EhTagDb;
+use crate::{g_info, tag_db};
 
 static TITLE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?:\([^\(\)]+\))?\s*(?:\[[^\[\]]+\])?\s*([^\[\]\(\)]+)").unwrap());
@@ -243,6 +243,9 @@ pub async fn update_tag_trans(
             continue;
         }
         let author_name = author_name.unwrap();
+        if author_name == raw_tag {
+            continue;
+        }
         client
             .replace_author_with_translation(author.id, author_name)
             .map_err(|e| anyhow!("{}", e))?;
@@ -270,6 +273,9 @@ pub async fn update_tag_trans(
             continue;
         }
         let publisher_name = publisher_name.unwrap();
+        if publisher_name == raw_tag {
+            continue;
+        }
         client
             .replace_publisher_with_translation(publisher.id, publisher_name)
             .map_err(|e| anyhow!("{}", e))?;
@@ -306,7 +312,11 @@ pub async fn update_tag_trans(
             if tag_name.is_none() {
                 continue;
             }
-            let translation = format!("{}:{}", tag_namespace, tag_name.unwrap());
+            let tag_name = tag_name.unwrap();
+            if tag_name == raw_tag {
+                continue;
+            }
+            let translation = format!("{}:{}", tag_namespace, tag_name);
             client
                 .replace_tag_with_translation(tag.id, &translation)
                 .map_err(|e| anyhow!("{}", e))?;
