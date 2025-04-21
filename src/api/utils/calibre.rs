@@ -21,8 +21,8 @@ use regex::Regex;
 use tokio::sync::Mutex;
 
 use super::{Gallery, parse_category, parse_category_str, parse_tag};
+use crate::g_info;
 use crate::tag_db::db::EhTagDb;
-use crate::{g_info, tag_db};
 
 static TITLE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?:\([^\(\)]+\))?\s*(?:\[[^\[\]]+\])?\s*([^\[\]\(\)]+)").unwrap());
@@ -91,7 +91,7 @@ pub async fn add_to_calibre(
                 .lock()
                 .await
                 .get_tag_name("reclass", c)?
-                .unwrap_or(c.to_string()),
+                .unwrap_or_else(|| c.to_string()),
         ),
         None => None,
     };
@@ -131,12 +131,12 @@ pub async fn add_to_calibre(
             .lock()
             .await
             .get_tag_name("rows", namespace)?
-            .unwrap_or(namespace.to_string());
+            .unwrap_or_else(|| namespace.to_string());
         let tag_name = tag_db
             .lock()
             .await
             .get_tag_name(namespace, raw_tag)?
-            .unwrap_or(raw_tag.to_string());
+            .unwrap_or_else(|| raw_tag.to_string());
         match tag {
             Keyword::Artist(_) => {
                 let author_dto = NewAuthorDto {
