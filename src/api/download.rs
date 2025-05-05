@@ -119,8 +119,6 @@ impl DownloadManager {
                     g_warn!(gid_token, "No cover image found in archive");
                 }
 
-                g_info!(gid_token, "Adding book to calibre library");
-
                 add_to_calibre(
                     calibre_client,
                     tag_db,
