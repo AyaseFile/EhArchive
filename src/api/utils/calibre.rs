@@ -35,8 +35,6 @@ pub async fn add_to_calibre(
     gallery: &Gallery,
     gid_token: &str,
 ) -> Result<()> {
-    let mut client = calibre_client.lock().await;
-
     let gallery_title;
     let gallery_title_jpn;
     let gallery_category;
@@ -215,7 +213,11 @@ pub async fn add_to_calibre(
     };
 
     g_info!(gid_token, "Adding book to calibre");
-    client.add_book(dto).map_err(|e| anyhow!("{}", e))?;
+    calibre_client
+        .lock()
+        .await
+        .add_book(dto)
+        .map_err(|e| anyhow!("{}", e))?;
 
     Ok(())
 }
@@ -224,14 +226,24 @@ pub async fn update_tag_trans(
     calibre_client: Arc<Mutex<CalibreClient>>,
     tag_db: Arc<Mutex<EhTagDb>>,
 ) -> Result<()> {
-    let mut client = calibre_client.lock().await;
-    let mut tag_db = tag_db.lock().await;
-
-    let tags_in_tag_db = tag_db.get_all_tags()?;
+    let tags_in_tag_db = tag_db.lock().await.get_all_tags()?;
     let rows_in_tag_db = tags_in_tag_db.get("rows").unwrap();
-    let authors_in_calibre = client.get_all_authors().map_err(|e| anyhow!("{}", e))?;
-    let publishers_in_calibre = client.get_all_publishers().map_err(|e| anyhow!("{}", e))?;
-    let tags_in_calibre = client.get_all_tags().map_err(|e| anyhow!("{}", e))?;
+
+    let authors_in_calibre = calibre_client
+        .lock()
+        .await
+        .get_all_authors()
+        .map_err(|e| anyhow!("{}", e))?;
+    let publishers_in_calibre = calibre_client
+        .lock()
+        .await
+        .get_all_publishers()
+        .map_err(|e| anyhow!("{}", e))?;
+    let tags_in_calibre = calibre_client
+        .lock()
+        .await
+        .get_all_tags()
+        .map_err(|e| anyhow!("{}", e))?;
 
     let mut updated_count = 0;
 
@@ -246,7 +258,9 @@ pub async fn update_tag_trans(
         if author_name == raw_tag {
             continue;
         }
-        client
+        calibre_client
+            .lock()
+            .await
             .replace_author_with_translation(author.id, author_name)
             .map_err(|e| anyhow!("{}", e))?;
         log::info!(
@@ -276,7 +290,9 @@ pub async fn update_tag_trans(
         if publisher_name == raw_tag {
             continue;
         }
-        client
+        calibre_client
+            .lock()
+            .await
             .replace_publisher_with_translation(publisher.id, publisher_name)
             .map_err(|e| anyhow!("{}", e))?;
         log::info!(
@@ -317,7 +333,9 @@ pub async fn update_tag_trans(
                 continue;
             }
             let translation = format!("{}:{}", tag_namespace, tag_name);
-            client
+            calibre_client
+                .lock()
+                .await
                 .replace_tag_with_translation(tag.id, &translation)
                 .map_err(|e| anyhow!("{}", e))?;
             log::info!("Replaced tag {} with translation {}", tag.name, translation);
