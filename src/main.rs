@@ -18,7 +18,7 @@ use tokio::sync::{Mutex, Semaphore};
 
 use api::{
     calibre::handle_tag_update, download::handle_download, import::handle_import,
-    tasks::get_active_tasks,
+    tag_query::handle_tag_query, tasks::get_active_tasks,
 };
 use config::Config;
 use tag_db::db::EhTagDb;
@@ -78,6 +78,7 @@ async fn main() {
         .route("/tasks", get(get_active_tasks))
         .route("/import", post(handle_import))
         .route("/calibre/metadata/update", post(handle_tag_update))
+        .route("/tag/query", post(handle_tag_query))
         .with_state(download_manager);
 
     let addr = format!("0.0.0.0:{}", port);
