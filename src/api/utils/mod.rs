@@ -15,7 +15,7 @@ pub enum Gallery {
     Metadata(GalleryMetadata),
 }
 
-fn parse_category(category: &Category) -> Option<&str> {
+const fn parse_category(category: &Category) -> Option<&str> {
     match category {
         Category::None => None,
         Category::Misc => Some("misc"),

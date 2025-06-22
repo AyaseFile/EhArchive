@@ -46,7 +46,7 @@ impl Config {
         Site::from(self.site.clone())
     }
 
-    pub fn port(&self) -> u16 {
+    pub const fn port(&self) -> u16 {
         self.port
     }
 
@@ -62,7 +62,7 @@ impl Config {
         &self.tag_db_root
     }
 
-    pub fn limit(&self) -> usize {
+    pub const fn limit(&self) -> usize {
         self.limit
     }
 }
