@@ -1,4 +1,5 @@
 use axum::{Json, extract::State};
+use log::error;
 
 use super::{
     BookMetadataReplaceRequest, BookMetadataReplaceResponse, MetadataUpdateResponse,
@@ -13,7 +14,9 @@ pub async fn handle_metadata_update(
     let tag_db = manager.tag_db;
 
     tokio::spawn(async move {
-        let _ = update_metadata(calibre_client, tag_db).await;
+        if let Err(e) = update_metadata(calibre_client, tag_db).await {
+            error!("Failed to update metadata: {e:?}");
+        }
     });
 
     Json(MetadataUpdateResponse {
@@ -32,8 +35,11 @@ pub async fn handle_book_metadata_replace(
     let url = request.url;
 
     tokio::spawn(async move {
-        let _ =
-            replace_book_metadata(calibre_client, tag_db, client, is_exhentai, url.clone()).await;
+        if let Err(e) =
+            replace_book_metadata(calibre_client, tag_db, client, is_exhentai, url.clone()).await
+        {
+            error!("Failed to replace book metadata for URL {url}: {e:?}");
+        }
     });
 
     Json(BookMetadataReplaceResponse {
