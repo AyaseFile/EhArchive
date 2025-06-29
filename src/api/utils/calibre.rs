@@ -17,7 +17,7 @@ use libcalibre::{
 use libeh::{
     client::client::EhClient,
     dto::{
-        api::{GIDListItem, GalleryMetadataRequest, GalleryMetadataResponse},
+        api::{GIDListItem, GalleryMetadata, GalleryMetadataRequest, GalleryMetadataResponse},
         keyword::Keyword,
     },
 };
@@ -27,9 +27,9 @@ use regex::Regex;
 use reqwest::Url;
 use tokio::sync::Mutex;
 
-use super::{Gallery, parse_category, parse_category_str, parse_tag};
-use crate::g_info;
+use super::{parse_category, parse_tag};
 use crate::tag_db::db::EhTagDb;
+use crate::{api::EH_API_URL, g_info};
 
 static TITLE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?:\([^\(\)]+\))?\s*(?:\[[^\[\]]+\])?\s*([^\[\]\(\)]+)").unwrap());
@@ -38,7 +38,7 @@ async fn gallery_to_dto(
     tag_db: Arc<Mutex<EhTagDb>>,
     is_exhentai: bool,
     cbz_path: Option<String>,
-    gallery: Gallery,
+    metadata: GalleryMetadata,
 ) -> Result<(
     NewBookDto,
     Vec<NewAuthorDto>,
@@ -49,34 +49,13 @@ async fn gallery_to_dto(
     Option<NewRatingDto>,
     Option<Vec<NewLibraryFileDto>>,
 )> {
-    let gallery_title;
-    let gallery_title_jpn;
-    let gallery_category;
-    let gallery_gid;
-    let gallery_token;
-    let gallery_rating;
-    let gallery_tags;
-
-    match gallery {
-        Gallery::Detail(detail) => {
-            gallery_title = detail.info.title;
-            gallery_title_jpn = detail.info.title_jpn;
-            gallery_category = parse_category(detail.info.category);
-            gallery_gid = detail.info.gid;
-            gallery_token = detail.info.token;
-            gallery_rating = detail.info.rating;
-            gallery_tags = detail.info.tags;
-        }
-        Gallery::Metadata(metadata) => {
-            gallery_title = metadata.title;
-            gallery_title_jpn = metadata.title_jpn;
-            gallery_category = parse_category_str(metadata.category);
-            gallery_gid = metadata.gid;
-            gallery_token = metadata.token;
-            gallery_rating = metadata.rating;
-            gallery_tags = metadata.tags;
-        }
-    };
+    let gallery_title = metadata.title;
+    let gallery_title_jpn = metadata.title_jpn;
+    let gallery_category = parse_category(metadata.category);
+    let gallery_gid = metadata.gid;
+    let gallery_token = metadata.token;
+    let gallery_rating = metadata.rating;
+    let gallery_tags = metadata.tags;
 
     let title = if !gallery_title_jpn.is_empty() {
         &gallery_title_jpn
@@ -230,7 +209,7 @@ pub async fn add_to_calibre(
     tag_db: Arc<Mutex<EhTagDb>>,
     is_exhentai: bool,
     cbz_path: String,
-    gallery: Gallery,
+    metadata: GalleryMetadata,
     gid_token: &str,
 ) -> Result<()> {
     let (
@@ -242,7 +221,7 @@ pub async fn add_to_calibre(
         identifiers_dto,
         rating_dto,
         files_dto,
-    ) = gallery_to_dto(tag_db, is_exhentai, Some(cbz_path), gallery).await?;
+    ) = gallery_to_dto(tag_db, is_exhentai, Some(cbz_path), metadata).await?;
     let dto = NewLibraryEntryDto {
         book: book_dto,
         authors: authors_dto,
@@ -388,7 +367,6 @@ pub async fn update_metadata(
 }
 
 static URL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"/g/(\d+)/([a-f0-9]+)/?").unwrap());
-const EH_API_URL: &str = "https://api.e-hentai.org/api.php";
 
 pub async fn replace_book_metadata(
     calibre_client: Arc<Mutex<CalibreClient>>,
@@ -439,8 +417,6 @@ pub async fn replace_book_metadata(
         metadata.title
     );
 
-    let gallery = Gallery::Metadata(metadata);
-
     let (
         book_dto,
         authors_dto,
@@ -450,7 +426,7 @@ pub async fn replace_book_metadata(
         identifiers_dto,
         rating_dto,
         _,
-    ) = gallery_to_dto(tag_db, is_exhentai, None, gallery).await?;
+    ) = gallery_to_dto(tag_db, is_exhentai, None, metadata).await?;
 
     let dto = ReplaceLibraryEntryDto {
         book: book_dto,

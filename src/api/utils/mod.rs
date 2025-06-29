@@ -3,37 +3,10 @@ pub mod calibre;
 use std::{fs::File, io};
 
 use anyhow::Result;
-use libeh::dto::{
-    api::GalleryMetadata,
-    gallery::{category::Category, detail::GalleryDetail},
-    keyword::Keyword,
-};
+use libeh::dto::keyword::Keyword;
 use zip::ZipArchive;
 
-pub enum Gallery {
-    Detail(GalleryDetail),
-    Metadata(GalleryMetadata),
-}
-
-fn parse_category(category: Category) -> Option<String> {
-    match category {
-        Category::None => None,
-        Category::Misc => Some("misc".to_string()),
-        Category::Doujinshi => Some("doujinshi".to_string()),
-        Category::Manga => Some("manga".to_string()),
-        Category::ArtistCG => Some("artistcg".to_string()),
-        Category::GameCG => Some("gamecg".to_string()),
-        Category::ImageSet => Some("imageset".to_string()),
-        Category::Cosplay => Some("cosplay".to_string()),
-        Category::NonH => Some("non-h".to_string()),
-        Category::Western => Some("western".to_string()),
-        Category::All => None,
-        Category::Private => Some("private".to_string()),
-        Category::Unknown => None,
-    }
-}
-
-fn parse_category_str(category: String) -> Option<String> {
+fn parse_category(category: String) -> Option<String> {
     match category.as_str() {
         "Misc" => Some("misc".to_string()),
         "Doujinshi" => Some("doujinshi".to_string()),

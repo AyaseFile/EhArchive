@@ -9,11 +9,9 @@ use serde_json::{Value, json};
 
 use super::{
     ImportRequest,
-    utils::{Gallery, calibre::add_to_calibre, extract_cover},
+    utils::{calibre::add_to_calibre, extract_cover},
 };
-use crate::{DownloadManager, g_info, g_warn};
-
-const EH_API_URL: &str = "https://api.e-hentai.org/api.php";
+use crate::{DownloadManager, api::EH_API_URL, g_info, g_warn};
 
 pub async fn handle_import(
     State(manager): State<DownloadManager>,
@@ -103,7 +101,7 @@ impl DownloadManager {
                     tag_db,
                     is_exhentai,
                     output_path,
-                    Gallery::Metadata(metadata),
+                    metadata,
                     &gid_token,
                 )
                 .await?;

@@ -10,6 +10,8 @@ use std::fmt::{self, Display};
 use serde::Deserialize;
 use serde::Serialize;
 
+pub const EH_API_URL: &str = "https://api.e-hentai.org/api.php";
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadType {

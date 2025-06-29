@@ -2,16 +2,19 @@ use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};
 use axum::{Json, extract::State, http::StatusCode};
-use libeh::dto::gallery::detail::GalleryDetail;
+use libeh::dto::{
+    api::{GIDListItem, GalleryMetadataRequest, GalleryMetadataResponse},
+    gallery::detail::GalleryDetail,
+};
 use log::{error, info, warn};
 use reqwest::Url;
 use serde_json::{Value, json};
 
 use super::{
     DownloadRequest, DownloadType,
-    utils::{Gallery, calibre::add_to_calibre, extract_cover},
+    utils::{calibre::add_to_calibre, extract_cover},
 };
-use crate::{DownloadManager, g_info, g_warn};
+use crate::{DownloadManager, api::EH_API_URL, g_info, g_warn};
 
 pub async fn handle_download(
     State(manager): State<DownloadManager>,
@@ -78,6 +81,24 @@ impl DownloadManager {
                     detail.size
                 );
 
+                let body = GalleryMetadataRequest::new(vec![GIDListItem::from(url.clone())]);
+                let body = serde_json::to_string(&body).unwrap();
+                let api_url = Url::parse(EH_API_URL).unwrap();
+                let response: GalleryMetadataResponse = client
+                    .post_json(api_url, body)
+                    .await
+                    .map_err(|e| anyhow!(e))?;
+                let metadata = response
+                    .gmetadata
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| anyhow!("No metadata found"))?;
+                g_info!(
+                    gid_token,
+                    "Gallery metadata parsed successfully. Title: {}",
+                    metadata.title
+                );
+
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
                 let filename = &gid_token;
                 let output_path = format!("{gallery_dir}/{filename}.cbz");
@@ -106,7 +127,7 @@ impl DownloadManager {
 
                 let json_path = format!("{gallery_dir}/gallery_detail.json");
                 g_info!(gid_token, "Saving gallery details to JSON: {}", json_path);
-                let json = serde_json::to_string_pretty(&detail)?;
+                let json = serde_json::to_string_pretty(&metadata)?;
                 tokio::fs::write(&json_path, json).await?;
                 g_info!(gid_token, "Gallery details saved to JSON successfully");
 
@@ -124,7 +145,7 @@ impl DownloadManager {
                     tag_db,
                     is_exhentai,
                     output_path,
-                    Gallery::Detail(detail),
+                    metadata,
                     &gid_token,
                 )
                 .await?;
