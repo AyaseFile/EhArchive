@@ -42,7 +42,7 @@ impl DownloadManager {
         {
             let tasks = self.active_tasks.lock().await;
             if tasks.contains(&url) {
-                warn!("Download job is already in progress: {}", url);
+                warn!("Download job is already in progress: {url}");
                 return Err(anyhow!("Download job is already in progress: {}", url));
             }
         }
@@ -63,7 +63,7 @@ impl DownloadManager {
             }
 
             let result: Result<()> = async {
-                info!("Starting download: {} (type: {})", url, download_type);
+                info!("Starting download: {url} (type: {download_type})");
 
                 let html = client
                     .get_html(Url::parse(&url)?)
@@ -80,7 +80,7 @@ impl DownloadManager {
 
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
                 let filename = &gid_token;
-                let output_path = format!("{}/{}.cbz", gallery_dir, filename);
+                let output_path = format!("{gallery_dir}/{filename}.cbz");
 
                 if PathBuf::from(&output_path).exists() {
                     g_warn!(gid_token, "Archive already exists: {}", output_path);
@@ -104,7 +104,7 @@ impl DownloadManager {
                     g_info!(gid_token, "Archive saved successfully: {}", output_path);
                 }
 
-                let json_path = format!("{}/gallery_detail.json", gallery_dir);
+                let json_path = format!("{gallery_dir}/gallery_detail.json");
                 g_info!(gid_token, "Saving gallery details to JSON: {}", json_path);
                 let json = serde_json::to_string_pretty(&detail)?;
                 tokio::fs::write(&json_path, json).await?;
@@ -143,7 +143,7 @@ impl DownloadManager {
                     let mut tasks = active_tasks.lock().await;
                     tasks.remove(&url);
                 }
-                error!("Download job failed for URL {}: {:?}", url, e);
+                error!("Download job failed for URL {url}: {e:?}");
             }
         });
 

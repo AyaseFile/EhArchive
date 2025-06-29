@@ -81,8 +81,8 @@ async fn main() {
         .route("/tag/query", post(handle_tag_query))
         .with_state(download_manager);
 
-    let addr = format!("0.0.0.0:{}", port);
-    log::info!("Server started: http://{}", addr);
+    let addr = format!("0.0.0.0:{port}");
+    log::info!("Server started: http://{addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

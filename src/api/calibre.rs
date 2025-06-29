@@ -10,10 +10,10 @@ pub async fn handle_tag_update(State(manager): State<DownloadManager>) -> Json<T
             message: "元数据翻译更新成功".to_string(),
         }),
         Err(e) => {
-            log::error!("元数据翻译更新失败: {}", e);
+            log::error!("元数据翻译更新失败: {e}");
             Json(TagUpdateResponse {
                 success: false,
-                message: format!("元数据翻译更新失败: {}", e),
+                message: format!("元数据翻译更新失败: {e}"),
             })
         }
     }

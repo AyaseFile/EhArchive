@@ -21,7 +21,7 @@ pub async fn handle_tag_query(
             (StatusCode::OK, Json(json!(response)))
         }
         Err(e) => {
-            error!("Failed to query tag translation: {}", e);
+            error!("Failed to query tag translation: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"error": format!("查询标签翻译失败: {}", e)})),

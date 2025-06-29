@@ -26,7 +26,7 @@ impl EhTagDb {
         let db_path = PathBuf::from(path).join(DB_FILENAME);
         let db_path_str = db_path.to_string_lossy();
 
-        info!("Opening or creating database at: {}", db_path_str);
+        info!("Opening or creating database at: {db_path_str}");
 
         let conn = SqliteConnection::establish(&db_path_str)?;
 
@@ -37,25 +37,21 @@ impl EhTagDb {
 
     fn init(&mut self) -> Result<()> {
         let latest_tag = Self::get_latest_github_tag()?;
-        info!("Latest GitHub tag: {}", latest_tag);
+        info!("Latest GitHub tag: {latest_tag}");
 
         let stored_version = self.get_stored_version()?;
 
         match stored_version {
             Some(version) if version == latest_tag => {
-                info!("Database is already at the latest version: {}", version);
+                info!("Database is already at the latest version: {version}");
                 return Ok(());
             }
             Some(version) => {
-                info!(
-                    "Updating database from version {} to {}",
-                    version, latest_tag
-                );
+                info!("Updating database from version {version} to {latest_tag}");
             }
             None => {
                 info!(
-                    "No version found in database, creating new database with version {}",
-                    latest_tag
+                    "No version found in database, creating new database with version {latest_tag}"
                 );
             }
         }
@@ -74,7 +70,7 @@ impl EhTagDb {
         info!("Successfully fetched JSON data");
 
         for namespace in NAMESPACES {
-            info!("Processing namespace: {}", namespace);
+            info!("Processing namespace: {namespace}");
 
             let tag_list = Self::extract_tags_from_json(&mut json_data, namespace)?;
 
@@ -87,7 +83,7 @@ impl EhTagDb {
             self.update_namespace(namespace, tag_list)?;
         }
 
-        info!("Updating stored version to {}", latest_tag);
+        info!("Updating stored version to {latest_tag}");
         self.update_stored_version(latest_tag)?;
         Ok(())
     }
@@ -154,14 +150,14 @@ impl EhTagDb {
         namespace: &str,
         tag_list: Vec<(String, String, String, String)>,
     ) -> Result<()> {
-        info!("Updating namespace: {}", namespace);
+        info!("Updating namespace: {namespace}");
 
         let mut raw_values = Vec::with_capacity(tag_list.len());
         for tags in &tag_list {
             raw_values.push(&tags.0);
         }
 
-        info!("Getting existing tags for namespace {}", namespace);
+        info!("Getting existing tags for namespace {namespace}");
         let existing_records = self.get_existing_tags(namespace, raw_values)?;
         info!("Found {} existing records", existing_records.len());
 
@@ -171,10 +167,7 @@ impl EhTagDb {
         info!("Executing database operations");
         let (inserts, updates, skips) = self.execute_operations(namespace, operations)?;
 
-        info!(
-            "Inserts: {}, Updates: {}, Skips: {}",
-            inserts, updates, skips
-        );
+        info!("Inserts: {inserts}, Updates: {updates}, Skips: {skips}");
 
         Ok(())
     }
@@ -203,8 +196,7 @@ impl EhTagDb {
             .transaction::<_, diesel::result::Error, _>(|conn| {
                 for op in &insert_ops {
                     let insert_sql = format!(
-                        "INSERT INTO {} (raw, name, intro, links) VALUES (?, ?, ?, ?)",
-                        table_name
+                        "INSERT INTO {table_name} (raw, name, intro, links) VALUES (?, ?, ?, ?)"
                     );
 
                     sql_query(insert_sql)
@@ -217,8 +209,7 @@ impl EhTagDb {
 
                 for op in &update_ops {
                     let update_sql = format!(
-                        "UPDATE {} SET name = ?, intro = ?, links = ? WHERE raw = ?",
-                        table_name
+                        "UPDATE {table_name} SET name = ?, intro = ?, links = ? WHERE raw = ?"
                     );
 
                     sql_query(update_sql)
@@ -241,15 +232,14 @@ impl EhTagDb {
 
     fn ensure_table_exists(&mut self, table_name: &str) -> Result<()> {
         let create_table_sql = format!(
-            "CREATE TABLE IF NOT EXISTS {} (
+            "CREATE TABLE IF NOT EXISTS {table_name} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, 
                 raw TEXT NOT NULL, 
                 name TEXT NOT NULL, 
                 intro TEXT, 
                 links TEXT, 
                 UNIQUE (raw)
-            )",
-            table_name
+            )"
         );
 
         sql_query(create_table_sql).execute(&mut self.conn)?;
@@ -270,8 +260,8 @@ impl EhTagDb {
     }
 
     fn get_latest_github_tag() -> Result<String> {
-        let url = format!("https://api.github.com/repos/{}/tags", REPO);
-        info!("Fetching latest tag from: {}", url);
+        let url = format!("https://api.github.com/repos/{REPO}/tags");
+        info!("Fetching latest tag from: {url}");
 
         let client = reqwest::blocking::Client::builder()
             .user_agent(USER_AGENT)
@@ -322,11 +312,8 @@ impl EhTagDb {
     }
 
     fn fetch_json_from_github(tag: &str) -> Result<EhTagJson> {
-        let url = format!(
-            "https://github.com/{}/releases/download/{}/db.text.json",
-            REPO, tag
-        );
-        info!("Fetching JSON from: {}", url);
+        let url = format!("https://github.com/{REPO}/releases/download/{tag}/db.text.json");
+        info!("Fetching JSON from: {url}");
 
         let client = reqwest::blocking::Client::builder()
             .user_agent(USER_AGENT)

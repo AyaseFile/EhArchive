@@ -49,7 +49,7 @@ impl DownloadManager {
 
         tokio::spawn(async move {
             let result: Result<()> = async {
-                info!("Starting import: {} (file: {})", url, path);
+                info!("Starting import: {url} (file: {path})");
 
                 let body = GalleryMetadataRequest::new(vec![GIDListItem::from(url)]);
                 let body = serde_json::to_string(&body).unwrap();
@@ -72,7 +72,7 @@ impl DownloadManager {
 
                 let gallery_dir = format!("{}/{}", output.display(), gid_token);
                 let filename = &gid_token;
-                let output_path = format!("{}/{}.cbz", gallery_dir, filename);
+                let output_path = format!("{gallery_dir}/{filename}.cbz");
 
                 if PathBuf::from(&output_path).exists() {
                     g_warn!(gid_token, "Archive already exists: {}", output_path);
@@ -83,7 +83,7 @@ impl DownloadManager {
                     g_info!(gid_token, "File copied successfully: {}", output_path);
                 }
 
-                let json_path = format!("{}/gallery_metadata.json", gallery_dir);
+                let json_path = format!("{gallery_dir}/gallery_metadata.json");
                 g_info!(gid_token, "Saving gallery metadata to JSON: {}", json_path);
                 let json = serde_json::to_string_pretty(&metadata)?;
                 tokio::fs::write(&json_path, json).await?;
@@ -113,7 +113,7 @@ impl DownloadManager {
             }
             .await;
             if let Err(e) = result {
-                error!("Import task failed for URL {}: {:?}", original_url, e);
+                error!("Import task failed for URL {original_url}: {e:?}");
             }
         });
 

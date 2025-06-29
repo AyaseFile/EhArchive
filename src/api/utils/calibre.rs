@@ -156,13 +156,13 @@ pub async fn add_to_calibre(
                     lang_code: raw_tag.to_string(),
                 });
                 let tag_dto = NewTagDto {
-                    name: format!("{}:{}", tag_namespace, tag_name),
+                    name: format!("{tag_namespace}:{tag_name}"),
                 };
                 tags_dto.push(tag_dto);
             }
             _ => {
                 let tag_dto = NewTagDto {
-                    name: format!("{}:{}", tag_namespace, tag_name),
+                    name: format!("{tag_namespace}:{tag_name}"),
                 };
                 tags_dto.push(tag_dto);
             }
@@ -222,6 +222,7 @@ pub async fn add_to_calibre(
     Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub async fn update_tag_trans(
     calibre_client: Arc<Mutex<CalibreClient>>,
     tag_db: Arc<Mutex<EhTagDb>>,
@@ -263,16 +264,12 @@ pub async fn update_tag_trans(
             .await
             .replace_author_with_translation(author.id, author_name)
             .map_err(|e| anyhow!("{}", e))?;
-        log::info!(
-            "Replaced author {} with translation {}",
-            raw_tag,
-            author_name
-        );
+        log::info!("Replaced author {raw_tag} with translation {author_name}");
         updated_count += 1;
     }
 
     if updated_count != 0 {
-        log::info!("Updated {} authors in calibre", updated_count);
+        log::info!("Updated {updated_count} authors in calibre");
     } else {
         log::info!("No authors to update in calibre");
     }
@@ -295,16 +292,12 @@ pub async fn update_tag_trans(
             .await
             .replace_publisher_with_translation(publisher.id, publisher_name)
             .map_err(|e| anyhow!("{}", e))?;
-        log::info!(
-            "Replaced publisher {} with translation {}",
-            raw_tag,
-            publisher_name
-        );
+        log::info!("Replaced publisher {raw_tag} with translation {publisher_name}");
         updated_count += 1;
     }
 
     if updated_count != 0 {
-        log::info!("Updated {} publishers in calibre", updated_count);
+        log::info!("Updated {updated_count} publishers in calibre");
     } else {
         log::info!("No publishers to update in calibre");
     }
@@ -332,7 +325,7 @@ pub async fn update_tag_trans(
             if tag_name == raw_tag {
                 continue;
             }
-            let translation = format!("{}:{}", tag_namespace, tag_name);
+            let translation = format!("{tag_namespace}:{tag_name}");
             calibre_client
                 .lock()
                 .await
@@ -344,7 +337,7 @@ pub async fn update_tag_trans(
     }
 
     if updated_count != 0 {
-        log::info!("Updated {} tags in calibre", updated_count);
+        log::info!("Updated {updated_count} tags in calibre");
     } else {
         log::info!("No tags to update in calibre");
     }

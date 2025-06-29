@@ -80,7 +80,7 @@ pub fn extract_cover(cbz_path: &str, output_dir: &str) -> Result<Option<(String,
             if let Some(ext) = ext.to_str() {
                 let ext = ext.to_lowercase();
                 if ext == "jpg" || ext == "jpeg" || ext == "png" {
-                    let output_path = format!("{}/cover.{}", output_dir, ext);
+                    let output_path = format!("{output_dir}/cover.{ext}");
                     let mut output_file = File::create(&output_path)?;
                     io::copy(&mut file, &mut output_file)?;
                     return Ok(Some((file.name().to_string(), output_path)));
