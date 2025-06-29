@@ -1519,8 +1519,8 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 
 [[package]]
 name = "libcalibre"
-version = "0.3.1"
-source = "git+https://github.com/AyaseFile/libcalibre#abeb2bb93fa7208d02873d3e8a47e2984541ca48"
+version = "0.3.2"
+source = "git+https://github.com/AyaseFile/libcalibre#367147b44d2fbeb9d61dd6e400295de8f7ffb60f"
 dependencies = [
  "chrono",
  "deunicode",
