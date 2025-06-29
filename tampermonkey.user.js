@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.6
+// @version      0.1.7
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
@@ -414,6 +414,7 @@
                 url: url,
                 path: path
             }),
+            timeout: 2000,
             onload: function (response) {
                 try {
                     const data = JSON.parse(response.responseText || '{}');
@@ -433,6 +434,10 @@
             onerror: function (e) {
                 console.error('导入请求失败:', e);
                 showNotification('导入请求失败', 'error');
+            },
+            ontimeout: function () {
+                console.error('导入请求超时');
+                showNotification('导入请求超时', 'error');
             }
         });
     }
@@ -450,6 +455,7 @@
                 url: currentUrl,
                 download_type: isOriginal ? 'original' : 'resample'
             }),
+            timeout: 2000,
             onload: function (response) {
                 try {
                     const data = JSON.parse(response.responseText || '{}');
@@ -466,6 +472,11 @@
             },
             onerror: function (e) {
                 console.error('下载请求失败:', e);
+                showNotification('下载请求失败', 'error');
+            },
+            ontimeout: function () {
+                console.error('下载请求超时');
+                showNotification('下载请求超时', 'error');
             }
         });
     }
@@ -477,6 +488,7 @@
             headers: {
                 'Content-Type': 'application/json'
             },
+            timeout: 2000,
             onload: function (response) {
                 try {
                     if (response.status === 200) {
@@ -493,6 +505,10 @@
             onerror: function (e) {
                 console.error('元数据翻译更新请求失败:', e);
                 showNotification('元数据翻译更新请求失败', 'error');
+            },
+            ontimeout: function () {
+                console.error('元数据翻译更新请求超时');
+                showNotification('元数据翻译更新请求超时', 'error');
             }
         });
     }
@@ -509,6 +525,7 @@
             data: JSON.stringify({
                 url: currentUrl
             }),
+            timeout: 2000,
             onload: function (response) {
                 try {
                     if (response.status === 200) {
@@ -525,6 +542,10 @@
             onerror: function (e) {
                 console.error('书籍元数据替换请求失败:', e);
                 showNotification('书籍元数据替换请求失败', 'error');
+            },
+            ontimeout: function () {
+                console.error('书籍元数据替换请求超时');
+                showNotification('书籍元数据替换请求超时', 'error');
             }
         });
     }
@@ -536,6 +557,7 @@
             headers: {
                 'Content-Type': 'application/json'
             },
+            timeout: 2000,
             onload: function (response) {
                 try {
                     const data = JSON.parse(response.responseText);
@@ -548,6 +570,9 @@
             },
             onerror: function (error) {
                 console.error('获取任务列表失败');
+            },
+            ontimeout: function () {
+                console.error('获取任务列表超时');
             }
         });
     }
