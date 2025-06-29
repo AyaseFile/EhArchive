@@ -8,16 +8,23 @@ use libcalibre::{
         author::NewAuthorDto,
         book::NewBookDto,
         language::NewLanguageDto,
-        library::{NewLibraryEntryDto, NewLibraryFileDto},
+        library::{NewLibraryEntryDto, NewLibraryFileDto, ReplaceLibraryEntryDto},
         publisher::NewPublisherDto,
         rating::NewRatingDto,
         tag::NewTagDto,
     },
 };
-use libeh::dto::keyword::Keyword;
+use libeh::{
+    client::client::EhClient,
+    dto::{
+        api::{GIDListItem, GalleryMetadataRequest, GalleryMetadataResponse},
+        keyword::Keyword,
+    },
+};
 use log::info;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use reqwest::Url;
 use tokio::sync::Mutex;
 
 use super::{Gallery, parse_category, parse_category_str, parse_tag};
@@ -27,14 +34,21 @@ use crate::tag_db::db::EhTagDb;
 static TITLE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?:\([^\(\)]+\))?\s*(?:\[[^\[\]]+\])?\s*([^\[\]\(\)]+)").unwrap());
 
-pub async fn add_to_calibre(
-    calibre_client: Arc<Mutex<CalibreClient>>,
+async fn gallery_to_dto(
     tag_db: Arc<Mutex<EhTagDb>>,
     is_exhentai: bool,
-    cbz_path: &str,
-    gallery: &Gallery,
-    gid_token: &str,
-) -> Result<()> {
+    cbz_path: Option<String>,
+    gallery: Gallery,
+) -> Result<(
+    NewBookDto,
+    Vec<NewAuthorDto>,
+    Vec<NewPublisherDto>,
+    Option<NewLanguageDto>,
+    Vec<NewTagDto>,
+    Vec<UpsertBookIdentifier>,
+    Option<NewRatingDto>,
+    Option<Vec<NewLibraryFileDto>>,
+)> {
     let gallery_title;
     let gallery_title_jpn;
     let gallery_category;
@@ -45,37 +59,37 @@ pub async fn add_to_calibre(
 
     match gallery {
         Gallery::Detail(detail) => {
-            gallery_title = &detail.info.title;
-            gallery_title_jpn = &detail.info.title_jpn;
-            gallery_category = parse_category(&detail.info.category);
+            gallery_title = detail.info.title;
+            gallery_title_jpn = detail.info.title_jpn;
+            gallery_category = parse_category(detail.info.category);
             gallery_gid = detail.info.gid;
-            gallery_token = &detail.info.token;
-            gallery_rating = &detail.info.rating;
-            gallery_tags = &detail.info.tags;
+            gallery_token = detail.info.token;
+            gallery_rating = detail.info.rating;
+            gallery_tags = detail.info.tags;
         }
         Gallery::Metadata(metadata) => {
-            gallery_title = &metadata.title;
-            gallery_title_jpn = &metadata.title_jpn;
-            gallery_category = parse_category_str(&metadata.category);
+            gallery_title = metadata.title;
+            gallery_title_jpn = metadata.title_jpn;
+            gallery_category = parse_category_str(metadata.category);
             gallery_gid = metadata.gid;
-            gallery_token = &metadata.token;
-            gallery_rating = &metadata.rating;
-            gallery_tags = &metadata.tags;
+            gallery_token = metadata.token;
+            gallery_rating = metadata.rating;
+            gallery_tags = metadata.tags;
         }
     };
 
     let title = if !gallery_title_jpn.is_empty() {
-        gallery_title_jpn
+        &gallery_title_jpn
     } else {
-        gallery_title
+        &gallery_title
     };
     let title = TITLE_REGEX
         .captures(title)
         .and_then(|c| c.get(1))
-        .map(|m| m.as_str().trim())
+        .map(|m| m.as_str().trim().to_string())
         .unwrap_or(gallery_title);
     let book_dto = NewBookDto {
-        title: title.to_string(),
+        title,
         timestamp: None,
         pubdate: None,
         series_index: 1.0,
@@ -88,8 +102,8 @@ pub async fn add_to_calibre(
             tag_db
                 .lock()
                 .await
-                .get_tag_name("reclass", c)?
-                .unwrap_or_else(|| c.to_string()),
+                .get_tag_name("reclass", &c)?
+                .unwrap_or(c),
         ),
         None => None,
     };
@@ -110,9 +124,7 @@ pub async fn add_to_calibre(
         rating: (gallery_rating * 2.0).floor() as i32,
     });
 
-    let files_dto = Some(vec![NewLibraryFileDto {
-        path: cbz_path.into(),
-    }]);
+    let files_dto = cbz_path.map(|path| vec![NewLibraryFileDto { path: path.into() }]);
 
     let mut authors_dto: Vec<NewAuthorDto> = Vec::new();
     let mut publishers_dto: Vec<NewPublisherDto> = Vec::new();
@@ -120,7 +132,7 @@ pub async fn add_to_calibre(
     let mut tags_dto: Vec<NewTagDto> = Vec::new();
 
     for tag in gallery_tags {
-        let result = parse_tag(tag);
+        let result = parse_tag(&tag);
         if result.is_none() {
             continue;
         }
@@ -201,6 +213,36 @@ pub async fn add_to_calibre(
         tags_dto.push(tag_dto);
     }
 
+    Ok((
+        book_dto,
+        authors_dto,
+        publishers_dto,
+        language_dto,
+        tags_dto,
+        identifiers_dto,
+        rating_dto,
+        files_dto,
+    ))
+}
+
+pub async fn add_to_calibre(
+    calibre_client: Arc<Mutex<CalibreClient>>,
+    tag_db: Arc<Mutex<EhTagDb>>,
+    is_exhentai: bool,
+    cbz_path: String,
+    gallery: Gallery,
+    gid_token: &str,
+) -> Result<()> {
+    let (
+        book_dto,
+        authors_dto,
+        publishers_dto,
+        language_dto,
+        tags_dto,
+        identifiers_dto,
+        rating_dto,
+        files_dto,
+    ) = gallery_to_dto(tag_db, is_exhentai, Some(cbz_path), gallery).await?;
     let dto = NewLibraryEntryDto {
         book: book_dto,
         authors: authors_dto,
@@ -223,7 +265,7 @@ pub async fn add_to_calibre(
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub async fn update_tag_trans(
+pub async fn update_metadata(
     calibre_client: Arc<Mutex<CalibreClient>>,
     tag_db: Arc<Mutex<EhTagDb>>,
 ) -> Result<()> {
@@ -341,6 +383,92 @@ pub async fn update_tag_trans(
     } else {
         log::info!("No tags to update in calibre");
     }
+
+    Ok(())
+}
+
+static URL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"/g/(\d+)/([a-f0-9]+)/?").unwrap());
+const EH_API_URL: &str = "https://api.e-hentai.org/api.php";
+
+pub async fn replace_book_metadata(
+    calibre_client: Arc<Mutex<CalibreClient>>,
+    tag_db: Arc<Mutex<EhTagDb>>,
+    client: EhClient,
+    is_exhentai: bool,
+    url: String,
+) -> Result<()> {
+    let captures = URL_REGEX
+        .captures(&url)
+        .ok_or_else(|| anyhow!("Invalid URL format"))?;
+    let gid = captures
+        .get(1)
+        .ok_or_else(|| anyhow!("Cannot extract gid"))?
+        .as_str();
+    let token = captures
+        .get(2)
+        .ok_or_else(|| anyhow!("Cannot extract token"))?
+        .as_str();
+    let identifier = format!("{}_{}_{}", gid, token, if is_exhentai { 1 } else { 0 });
+    let book_id = {
+        let mut client = calibre_client.lock().await;
+        match client.find_book_id_by_identifier("ehentai", &identifier) {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                return Err(anyhow!("No book found with identifier: {}", identifier));
+            }
+            Err(e) => return Err(anyhow!(e)),
+        }
+    };
+
+    let body = GalleryMetadataRequest::new(vec![GIDListItem::from(url)]);
+    let body = serde_json::to_string(&body).unwrap();
+    let api_url = Url::parse(EH_API_URL).unwrap();
+    let response: GalleryMetadataResponse = client
+        .post_json(api_url, body)
+        .await
+        .map_err(|e| anyhow!(e))?;
+    let metadata = response
+        .gmetadata
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("No metadata found"))?;
+    let gid_token = format!("{}_{}", metadata.gid, metadata.token);
+    g_info!(
+        gid_token,
+        "Gallery metadata parsed successfully. Title: {}",
+        metadata.title
+    );
+
+    let gallery = Gallery::Metadata(metadata);
+
+    let (
+        book_dto,
+        authors_dto,
+        publishers_dto,
+        language_dto,
+        tags_dto,
+        identifiers_dto,
+        rating_dto,
+        _,
+    ) = gallery_to_dto(tag_db, is_exhentai, None, gallery).await?;
+
+    let dto = ReplaceLibraryEntryDto {
+        book: book_dto,
+        authors: authors_dto,
+        publishers: publishers_dto,
+        identifiers: identifiers_dto,
+        language: language_dto,
+        tags: tags_dto,
+        rating: rating_dto,
+    };
+
+    g_info!(gid_token, "Replacing book metadata for book_id: {book_id}");
+    calibre_client
+        .lock()
+        .await
+        .replace_book_metadata(book_id, dto)
+        .map_err(|e| anyhow!("{}", e))?;
+    g_info!(gid_token, "Book {book_id} metadata replaced successfully");
 
     Ok(())
 }

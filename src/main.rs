@@ -17,8 +17,11 @@ use libeh::{
 use tokio::sync::{Mutex, Semaphore};
 
 use api::{
-    calibre::handle_tag_update, download::handle_download, import::handle_import,
-    tag_query::handle_tag_query, tasks::get_active_tasks,
+    calibre::{handle_book_metadata_replace, handle_metadata_update},
+    download::handle_download,
+    import::handle_import,
+    tag_query::handle_tag_query,
+    tasks::get_active_tasks,
 };
 use config::Config;
 use tag_db::db::EhTagDb;
@@ -77,7 +80,11 @@ async fn main() {
         .route("/download", post(handle_download))
         .route("/tasks", get(get_active_tasks))
         .route("/import", post(handle_import))
-        .route("/calibre/metadata/update", post(handle_tag_update))
+        .route("/calibre/metadata/update", post(handle_metadata_update))
+        .route(
+            "/calibre/book/metadata/replace",
+            post(handle_book_metadata_replace),
+        )
         .route("/tag/query", post(handle_tag_query))
         .with_state(download_manager);
 

@@ -102,8 +102,8 @@ impl DownloadManager {
                     calibre_client,
                     tag_db,
                     is_exhentai,
-                    &output_path,
-                    &Gallery::Metadata(metadata),
+                    output_path,
+                    Gallery::Metadata(metadata),
                     &gid_token,
                 )
                 .await?;

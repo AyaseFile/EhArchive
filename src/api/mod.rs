@@ -42,7 +42,7 @@ pub struct ImportRequest {
 }
 
 #[derive(Serialize)]
-pub struct TagUpdateResponse {
+pub struct MetadataUpdateResponse {
     success: bool,
     message: String,
 }
@@ -56,4 +56,15 @@ pub struct TagQueryRequest {
 #[derive(Debug, Serialize)]
 pub struct TagQueryResponse {
     pub translated_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BookMetadataReplaceRequest {
+    pub url: String,
+}
+
+#[derive(Serialize)]
+pub struct BookMetadataReplaceResponse {
+    success: bool,
+    message: String,
 }

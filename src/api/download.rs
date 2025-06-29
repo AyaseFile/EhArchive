@@ -123,8 +123,8 @@ impl DownloadManager {
                     calibre_client,
                     tag_db,
                     is_exhentai,
-                    &output_path,
-                    &Gallery::Detail(detail),
+                    output_path,
+                    Gallery::Detail(detail),
                     &gid_token,
                 )
                 .await?;

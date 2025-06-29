@@ -15,36 +15,36 @@ pub enum Gallery {
     Metadata(GalleryMetadata),
 }
 
-const fn parse_category(category: &Category) -> Option<&str> {
+fn parse_category(category: Category) -> Option<String> {
     match category {
         Category::None => None,
-        Category::Misc => Some("misc"),
-        Category::Doujinshi => Some("doujinshi"),
-        Category::Manga => Some("manga"),
-        Category::ArtistCG => Some("artistcg"),
-        Category::GameCG => Some("gamecg"),
-        Category::ImageSet => Some("imageset"),
-        Category::Cosplay => Some("cosplay"),
-        Category::NonH => Some("non-h"),
-        Category::Western => Some("western"),
+        Category::Misc => Some("misc".to_string()),
+        Category::Doujinshi => Some("doujinshi".to_string()),
+        Category::Manga => Some("manga".to_string()),
+        Category::ArtistCG => Some("artistcg".to_string()),
+        Category::GameCG => Some("gamecg".to_string()),
+        Category::ImageSet => Some("imageset".to_string()),
+        Category::Cosplay => Some("cosplay".to_string()),
+        Category::NonH => Some("non-h".to_string()),
+        Category::Western => Some("western".to_string()),
         Category::All => None,
-        Category::Private => Some("private"),
+        Category::Private => Some("private".to_string()),
         Category::Unknown => None,
     }
 }
 
-fn parse_category_str(category: &str) -> Option<&str> {
-    match category {
-        "Misc" => Some("misc"),
-        "Doujinshi" => Some("doujinshi"),
-        "Manga" => Some("manga"),
-        "Artist CG" => Some("artistcg"),
-        "Game CG" => Some("gamecg"),
-        "Image Set" => Some("imageset"),
-        "Cosplay" => Some("cosplay"),
-        "Non-H" => Some("non-h"),
-        "Western" => Some("western"),
-        "private" => Some("private"),
+fn parse_category_str(category: String) -> Option<String> {
+    match category.as_str() {
+        "Misc" => Some("misc".to_string()),
+        "Doujinshi" => Some("doujinshi".to_string()),
+        "Manga" => Some("manga".to_string()),
+        "Artist CG" => Some("artistcg".to_string()),
+        "Game CG" => Some("gamecg".to_string()),
+        "Image Set" => Some("imageset".to_string()),
+        "Cosplay" => Some("cosplay".to_string()),
+        "Non-H" => Some("non-h".to_string()),
+        "Western" => Some("western".to_string()),
+        "private" => Some("private".to_string()),
         _ => None,
     }
 }
