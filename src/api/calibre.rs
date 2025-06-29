@@ -9,44 +9,34 @@ use crate::DownloadManager;
 pub async fn handle_metadata_update(
     State(manager): State<DownloadManager>,
 ) -> Json<MetadataUpdateResponse> {
-    match update_metadata(manager.calibre_client.clone(), manager.tag_db.clone()).await {
-        Ok(_) => Json(MetadataUpdateResponse {
-            success: true,
-            message: "元数据翻译更新成功".to_string(),
-        }),
-        Err(e) => {
-            log::error!("元数据翻译更新失败: {e}");
-            Json(MetadataUpdateResponse {
-                success: false,
-                message: format!("元数据翻译更新失败: {e}"),
-            })
-        }
-    }
+    let calibre_client = manager.calibre_client.clone();
+    let tag_db = manager.tag_db;
+
+    tokio::spawn(async move {
+        let _ = update_metadata(calibre_client, tag_db).await;
+    });
+
+    Json(MetadataUpdateResponse {
+        message: "元数据翻译更新任务已启动".to_string(),
+    })
 }
 
 pub async fn handle_book_metadata_replace(
     State(manager): State<DownloadManager>,
     Json(request): Json<BookMetadataReplaceRequest>,
 ) -> Json<BookMetadataReplaceResponse> {
-    match replace_book_metadata(
-        manager.calibre_client.clone(),
-        manager.tag_db.clone(),
-        manager.client.clone(),
-        manager.is_exhentai,
-        request.url,
-    )
-    .await
-    {
-        Ok(_) => Json(BookMetadataReplaceResponse {
-            success: true,
-            message: "书籍元数据替换成功".to_string(),
-        }),
-        Err(e) => {
-            log::error!("书籍元数据替换失败: {e}");
-            Json(BookMetadataReplaceResponse {
-                success: false,
-                message: format!("书籍元数据替换失败: {e}"),
-            })
-        }
-    }
+    let is_exhentai = manager.is_exhentai;
+    let calibre_client = manager.calibre_client.clone();
+    let client = manager.client.clone();
+    let tag_db = manager.tag_db;
+    let url = request.url;
+
+    tokio::spawn(async move {
+        let _ =
+            replace_book_metadata(calibre_client, tag_db, client, is_exhentai, url.clone()).await;
+    });
+
+    Json(BookMetadataReplaceResponse {
+        message: "书籍元数据替换任务已启动".to_string(),
+    })
 }

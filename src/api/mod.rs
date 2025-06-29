@@ -43,8 +43,7 @@ pub struct ImportRequest {
 
 #[derive(Serialize)]
 pub struct MetadataUpdateResponse {
-    success: bool,
-    message: String,
+    pub message: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,6 +64,5 @@ pub struct BookMetadataReplaceRequest {
 
 #[derive(Serialize)]
 pub struct BookMetadataReplaceResponse {
-    success: bool,
-    message: String,
+    pub message: String,
 }

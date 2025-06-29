@@ -479,11 +479,11 @@
             },
             onload: function (response) {
                 try {
-                    const data = JSON.parse(response.responseText || '{}');
-                    if (response.status === 200 && data.success) {
-                        showNotification(data.message || '元数据翻译更新成功', 'success');
+                    if (response.status === 200) {
+                        const data = JSON.parse(response.responseText || '{}');
+                        showNotification(data.message || '元数据翻译更新任务已启动', 'success');
                     } else {
-                        showNotification(data.message || '元数据翻译更新失败', 'error');
+                        showNotification('元数据翻译更新请求失败', 'error');
                     }
                 } catch (e) {
                     console.error('解析响应失败:', e);
@@ -511,11 +511,11 @@
             }),
             onload: function (response) {
                 try {
-                    const data = JSON.parse(response.responseText || '{}');
-                    if (response.status === 200 && data.success) {
-                        showNotification(data.message || '书籍元数据替换成功', 'success');
+                    if (response.status === 200) {
+                        const data = JSON.parse(response.responseText || '{}');
+                        showNotification(data.message || '书籍元数据替换任务已启动', 'success');
                     } else {
-                        showNotification(data.message || '书籍元数据替换失败', 'error');
+                        showNotification('书籍元数据替换请求失败', 'error');
                     }
                 } catch (e) {
                     console.error('解析响应失败:', e);
