@@ -77,15 +77,15 @@ async fn main() {
     let download_manager = DownloadManager::new(config);
 
     let app = Router::new()
-        .route("/download", post(handle_download))
+        .route("/downloads", post(handle_download))
         .route("/tasks", get(get_active_tasks))
-        .route("/import", post(handle_import))
-        .route("/calibre/metadata/update", post(handle_metadata_update))
+        .route("/imports", post(handle_import))
+        .route("/calibre/metadata", post(handle_metadata_update))
         .route(
-            "/calibre/book/metadata/replace",
+            "/calibre/books/metadata",
             post(handle_book_metadata_replace),
         )
-        .route("/tag/query", post(handle_tag_query))
+        .route("/tags/query", post(handle_tag_query))
         .with_state(download_manager);
 
     let addr = format!("0.0.0.0:{port}");

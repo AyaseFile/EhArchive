@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.7
+// @version      0.1.8
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
@@ -406,7 +406,7 @@
 
         GM_xmlhttpRequest({
             method: 'POST',
-            url: `${backendUrl}/import`,
+            url: `${backendUrl}/imports`,
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -447,7 +447,7 @@
 
         GM_xmlhttpRequest({
             method: 'POST',
-            url: `${backendUrl}/download`,
+            url: `${backendUrl}/downloads`,
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -484,7 +484,7 @@
     function sendMetadataUpdateRequest() {
         GM_xmlhttpRequest({
             method: 'POST',
-            url: `${backendUrl}/calibre/metadata/update`,
+            url: `${backendUrl}/calibre/metadata`,
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -518,7 +518,7 @@
 
         GM_xmlhttpRequest({
             method: 'POST',
-            url: `${backendUrl}/calibre/book/metadata/replace`,
+            url: `${backendUrl}/calibre/books/metadata`,
             headers: {
                 'Content-Type': 'application/json'
             },
