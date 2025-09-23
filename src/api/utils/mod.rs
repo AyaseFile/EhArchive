@@ -50,8 +50,8 @@ pub fn extract_cover(cbz_path: &str, output_dir: &str) -> Result<Option<(String,
         let mut file = archive.by_index(i)?;
         let path = file.mangled_name();
 
-        if let Some(ext) = path.extension() {
-            if let Some(ext) = ext.to_str() {
+        if let Some(ext) = path.extension()
+            && let Some(ext) = ext.to_str() {
                 let ext = ext.to_lowercase();
                 if ext == "jpg" || ext == "jpeg" || ext == "png" {
                     let output_path = format!("{output_dir}/cover.{ext}");
@@ -60,7 +60,6 @@ pub fn extract_cover(cbz_path: &str, output_dir: &str) -> Result<Option<(String,
                     return Ok(Some((file.name().to_string(), output_path)));
                 }
             }
-        }
     }
     Ok(None)
 }
