@@ -38,6 +38,7 @@ fn parse_tag(tag: &Keyword) -> Option<(&str, &str)> {
         Keyword::Reclass(k) => Some(("reclass", k)),
         Keyword::Temp(_) => None,
         Keyword::Uploader(k) => Some(("uploader", k)),
+        Keyword::Location(k) => Some(("location", k)),
     }
 }
 

@@ -19,6 +19,7 @@ const NAMESPACES: &[&str] = &[
     "female",
     "group",
     "language",
+    "location",
     "male",
     "mixed",
     "other",
