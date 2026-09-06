@@ -23,6 +23,25 @@ pub struct Config {
 
     #[clap(long, env = "LIMIT", default_value = "5")]
     limit: usize,
+
+    #[clap(
+        long,
+        env = "KOMGA_URL",
+        requires_all = ["komga_library_id", "komga_api_key"]
+    )]
+    komga_url: Option<String>,
+    #[clap(
+        long,
+        env = "KOMGA_LIBRARY_ID",
+        requires_all = ["komga_url", "komga_api_key"]
+    )]
+    komga_library_id: Option<String>,
+    #[clap(
+        long,
+        env = "KOMGA_API_KEY",
+        requires_all = ["komga_url", "komga_library_id"]
+    )]
+    komga_api_key: Option<String>,
 }
 
 impl Config {
@@ -64,5 +83,16 @@ impl Config {
 
     pub const fn limit(&self) -> usize {
         self.limit
+    }
+
+    pub fn komga(&self) -> Option<(&str, &str, &str)> {
+        match (
+            self.komga_url.as_deref(),
+            self.komga_library_id.as_deref(),
+            self.komga_api_key.as_deref(),
+        ) {
+            (Some(url), Some(library_id), Some(api_key)) => Some((url, library_id, api_key)),
+            _ => None,
+        }
     }
 }

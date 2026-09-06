@@ -95,6 +95,7 @@ impl DownloadManager {
                 })
                 .await??;
                 g_info!(gid_token, "Archive saved successfully: {}", output_path);
+                manager.scan_komga().await;
                 Ok(())
             }
             .await;

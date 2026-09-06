@@ -3,7 +3,7 @@ mod config;
 mod g_log;
 mod tag_db;
 
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, path::PathBuf, sync::Arc, time::Duration};
 
 use axum::{
     Router,
@@ -31,6 +31,14 @@ struct DownloadManager {
     semaphore: Arc<Semaphore>,
     tag_db: Arc<Mutex<EhTagDb>>,
     active_tasks: Arc<Mutex<HashSet<String>>>,
+    komga: Option<Komga>,
+}
+
+#[derive(Clone)]
+struct Komga {
+    client: reqwest::Client,
+    scan_url: String,
+    api_key: String,
 }
 
 impl DownloadManager {
@@ -47,6 +55,15 @@ impl DownloadManager {
             auth: Some(eh_auth_config),
         };
         let tag_db = EhTagDb::new(config.tag_db_path().into()).unwrap();
+        let komga = config.komga().map(|(url, library_id, api_key)| Komga {
+            client: reqwest::Client::new(),
+            scan_url: format!(
+                "{}/api/v1/libraries/{}/scan",
+                url.trim_end_matches('/'),
+                library_id
+            ),
+            api_key: api_key.into(),
+        });
         Self {
             client: EhClient::new(eh_client_config),
             is_exhentai: matches!(site, Site::Ex),
@@ -55,6 +72,32 @@ impl DownloadManager {
             semaphore: Arc::new(Semaphore::new(config.limit())),
             tag_db: Arc::new(Mutex::new(tag_db)),
             active_tasks: Arc::new(Mutex::new(HashSet::new())),
+            komga,
+        }
+    }
+
+    async fn scan_komga(&self) {
+        let Some(komga) = &self.komga else {
+            return;
+        };
+
+        match komga
+            .client
+            .post(&komga.scan_url)
+            .header("X-API-Key", &komga.api_key)
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await
+        {
+            Ok(response) if response.status() == reqwest::StatusCode::ACCEPTED => {
+                log::info!("Komga library scan requested successfully")
+            }
+            Ok(response) => log::warn!(
+                "Komga library scan returned unexpected status {} from {}",
+                response.status(),
+                response.url()
+            ),
+            Err(e) => log::warn!("Failed to request Komga library scan: {e}"),
         }
     }
 }

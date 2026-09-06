@@ -23,12 +23,15 @@ Arguments:
   [SITE]           [env: EH_SITE=] [default: e-hentai.org]
 
 Options:
-      --port <PORT>                        [env: PORT=] [default: 3000]
-      --archive-output <ARCHIVE_OUTPUT>    [env: ARCHIVE_OUTPUT=]
-      --metadata-output <METADATA_OUTPUT>  [env: METADATA_OUTPUT=]
-      --tag-db-root <TAG_DB_ROOT>          [env: TAG_DB_ROOT=]
-      --limit <LIMIT>                      [env: LIMIT=] [default: 5]
-  -h, --help                               Print help
+      --port <PORT>                          [env: PORT=] [default: 3000]
+      --archive-output <ARCHIVE_OUTPUT>      [env: ARCHIVE_OUTPUT=]
+      --metadata-output <METADATA_OUTPUT>    [env: METADATA_OUTPUT=]
+      --tag-db-root <TAG_DB_ROOT>            [env: TAG_DB_ROOT=]
+      --limit <LIMIT>                        [env: LIMIT=] [default: 5]
+      --komga-url <KOMGA_URL>                [env: KOMGA_URL=]
+      --komga-library-id <KOMGA_LIBRARY_ID>  [env: KOMGA_LIBRARY_ID=]
+      --komga-api-key <KOMGA_API_KEY>        [env: KOMGA_API_KEY=]
+  -h, --help                                 Print help
 ```
 
 ## Build
