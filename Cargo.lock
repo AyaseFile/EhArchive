@@ -716,7 +716,7 @@ checksum = "b04dc5a38e4f151a79d9f2451ae6037fb6eaf5cba34771f44781f80e508498e3"
 
 [[package]]
 name = "eh-archive"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "axum",
