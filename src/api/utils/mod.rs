@@ -1,10 +1,7 @@
-pub mod calibre;
+pub(super) mod archive;
+pub(super) mod comic_info;
 
-use std::{fs::File, io};
-
-use anyhow::Result;
 use libeh::dto::keyword::Keyword;
-use zip::ZipArchive;
 
 fn parse_category(category: String) -> Option<String> {
     match category.as_str() {
@@ -36,30 +33,7 @@ fn parse_tag(tag: &Keyword) -> Option<(&str, &str)> {
         Keyword::Mixed(k) => Some(("mixed", k)),
         Keyword::Other(k) => Some(("other", k)),
         Keyword::Reclass(k) => Some(("reclass", k)),
-        Keyword::Temp(_) => None,
-        Keyword::Uploader(k) => Some(("uploader", k)),
+        Keyword::Temp(_) | Keyword::Uploader(_) => None,
         Keyword::Location(k) => Some(("location", k)),
     }
-}
-
-pub fn extract_cover(cbz_path: &str, output_dir: &str) -> Result<Option<(String, String)>> {
-    let file = File::open(cbz_path)?;
-    let mut archive = ZipArchive::new(file)?;
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let path = file.mangled_name();
-
-        if let Some(ext) = path.extension()
-            && let Some(ext) = ext.to_str() {
-                let ext = ext.to_lowercase();
-                if ext == "jpg" || ext == "jpeg" || ext == "png" {
-                    let output_path = format!("{output_dir}/cover.{ext}");
-                    let mut output_file = File::create(&output_path)?;
-                    io::copy(&mut file, &mut output_file)?;
-                    return Ok(Some((file.name().to_string(), output_path)));
-                }
-            }
-    }
-    Ok(None)
 }

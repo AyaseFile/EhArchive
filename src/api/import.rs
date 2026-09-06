@@ -1,17 +1,15 @@
-use std::{path::PathBuf, vec};
+use std::{fs::File, path::PathBuf};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, ensure};
 use axum::{Json, extract::State, http::StatusCode};
-use libeh::dto::api::{GIDListItem, GalleryMetadataRequest, GalleryMetadataResponse};
 use log::{error, info, warn};
-use reqwest::Url;
 use serde_json::{Value, json};
 
 use super::{
     ImportRequest,
-    utils::{calibre::add_to_calibre, extract_cover},
+    utils::{archive, comic_info},
 };
-use crate::{DownloadManager, api::EH_API_URL, g_info, g_warn};
+use crate::{DownloadManager, g_info, g_warn};
 
 pub async fn handle_import(
     State(manager): State<DownloadManager>,
@@ -28,93 +26,82 @@ pub async fn handle_import(
 
 impl DownloadManager {
     pub async fn import_archive(&self, url: String, path: String) -> Result<()> {
-        let client = self.client.clone();
-        let output = self.output.clone();
-        let is_exhentai = self.is_exhentai;
-        let calibre_client = self.calibre_client.clone();
-        let tag_db = self.tag_db.clone();
-        let original_url = url.clone();
-
         let archive = PathBuf::from(&path);
-        if !archive.exists() || !archive.is_file() {
-            return Err(anyhow!("Archive not found: {}", path));
+        ensure!(archive.is_file(), "Archive does not exist: {path}");
+        ensure!(
+            archive
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|ext| { matches!(ext.to_ascii_lowercase().as_str(), "zip" | "cbz") }),
+            "File must be a .zip or .cbz archive"
+        );
+        let site = if self.is_exhentai {
+            "exhentai.org"
+        } else {
+            "e-hentai.org"
+        };
+        let url = if self.is_exhentai {
+            url.replace("e-hentai.org", "exhentai.org")
+        } else {
+            url.replace("exhentai.org", "e-hentai.org")
+        };
+        {
+            let mut tasks = self.active_tasks.lock().await;
+            if !tasks.insert(url.clone()) {
+                warn!("Import task is already in progress: {url}");
+                return Err(anyhow!("Import task is already in progress: {}", url));
+            }
         }
-
-        let ext = archive.extension().and_then(|e| e.to_str());
-        if ext != Some("zip") && ext != Some("cbz") {
-            return Err(anyhow!("File must be a .cbz or .zip archive"));
-        }
-
+        let manager = self.clone();
         tokio::spawn(async move {
             let result: Result<()> = async {
                 info!("Starting import: {url} (file: {path})");
-
-                let body = GalleryMetadataRequest::new(vec![GIDListItem::from(url)]);
-                let body = serde_json::to_string(&body).unwrap();
-                let api_url = Url::parse(EH_API_URL).unwrap();
-                let response: GalleryMetadataResponse = client
-                    .post_json(api_url, body)
-                    .await
-                    .map_err(|e| anyhow!(e))?;
-                let metadata = response
-                    .gmetadata
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| anyhow!("No metadata found"))?;
+                let metadata = manager.get_gallery_metadata(&url).await?;
                 let gid_token = format!("{}_{}", metadata.gid, metadata.token);
                 g_info!(
                     gid_token,
                     "Gallery metadata parsed successfully. Title: {}",
                     metadata.title
                 );
-
-                let gallery_dir = format!("{}/{}", output.display(), gid_token);
-                let filename = &gid_token;
-                let output_path = format!("{gallery_dir}/{filename}.cbz");
-
-                if PathBuf::from(&output_path).exists() {
-                    g_warn!(gid_token, "Archive already exists: {}", output_path);
-                } else {
-                    tokio::fs::create_dir_all(&gallery_dir).await?;
-                    g_info!(gid_token, "Copying archive file to: {}", output_path);
-                    tokio::fs::copy(&path, &output_path).await?;
-                    g_info!(gid_token, "File copied successfully: {}", output_path);
+                if let Some(output_path) =
+                    archive::find_archive(&manager.output, metadata.gid, &metadata.token)?
+                {
+                    g_warn!(
+                        gid_token,
+                        "Archive already exists: {}",
+                        output_path.display()
+                    );
+                    return Ok(());
                 }
-
-                let json_path = format!("{gallery_dir}/gallery_metadata.json");
-                g_info!(gid_token, "Saving gallery metadata to JSON: {}", json_path);
-                let json = serde_json::to_string_pretty(&metadata)?;
-                tokio::fs::write(&json_path, json).await?;
-                g_info!(gid_token, "Gallery details saved to JSON successfully");
-
-                g_info!(gid_token, "Extracting cover image");
-                let result = extract_cover(&output_path, &gallery_dir)?;
-                if let Some((cover, cover_path)) = result {
-                    g_info!(gid_token, "Found cover image: {}", cover);
-                    g_info!(gid_token, "Cover image saved to: {}", cover_path);
-                } else {
-                    g_warn!(gid_token, "No cover image found in archive");
-                }
-
-                add_to_calibre(
-                    calibre_client,
-                    tag_db,
-                    is_exhentai,
-                    output_path,
-                    metadata,
-                    &gid_token,
-                )
-                .await?;
-                g_info!(gid_token, "Book added to calibre library successfully");
-
+                let comic_metadata = {
+                    let mut tag_db = manager.tag_db.lock().await;
+                    comic_info::gallery_to_comic_metadata(site, &metadata, &mut tag_db)?
+                };
+                let identifier = format!(
+                    "{}_{}_{}",
+                    metadata.gid,
+                    metadata.token,
+                    i32::from(manager.is_exhentai)
+                );
+                let output = manager.output.clone();
+                let output_path = tokio::task::spawn_blocking(move || {
+                    archive::build_archive(
+                        File::open(archive)?,
+                        &output,
+                        &identifier,
+                        &comic_metadata,
+                    )
+                })
+                .await??;
+                g_info!(gid_token, "Archive saved successfully: {}", output_path);
                 Ok(())
             }
             .await;
+            manager.active_tasks.lock().await.remove(&url);
             if let Err(e) = result {
-                error!("Import task failed for URL {original_url}: {e:?}");
+                error!("Import task failed for URL {url}: {e:?}");
             }
         });
-
         Ok(())
     }
 }

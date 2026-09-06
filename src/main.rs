@@ -9,7 +9,6 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use libcalibre::{client::CalibreClient, util::get_db_path};
 use libeh::{
     client::{auth::EhClientAuth, client::EhClient, config::EhClientConfig},
     dto::site::Site,
@@ -17,10 +16,7 @@ use libeh::{
 use tokio::sync::{Mutex, Semaphore};
 
 use api::{
-    calibre::{handle_book_metadata_replace, handle_metadata_update},
-    download::handle_download,
-    import::handle_import,
-    tag_query::handle_tag_query,
+    download::handle_download, import::handle_import, tag_query::handle_tag_query,
     tasks::get_active_tasks,
 };
 use config::Config;
@@ -31,9 +27,9 @@ struct DownloadManager {
     client: EhClient,
     is_exhentai: bool,
     output: PathBuf,
+    metadata_output: Option<PathBuf>,
     semaphore: Arc<Semaphore>,
     tag_db: Arc<Mutex<EhTagDb>>,
-    calibre_client: Arc<Mutex<CalibreClient>>,
     active_tasks: Arc<Mutex<HashSet<String>>>,
 }
 
@@ -51,15 +47,13 @@ impl DownloadManager {
             auth: Some(eh_auth_config),
         };
         let tag_db = EhTagDb::new(config.tag_db_path().into()).unwrap();
-        let valid_path = get_db_path(config.library_root());
-        let calibre_client = CalibreClient::new(valid_path.unwrap());
         Self {
             client: EhClient::new(eh_client_config),
             is_exhentai: matches!(site, Site::Ex),
             output: config.archive_output().into(),
+            metadata_output: config.metadata_output().map(PathBuf::from),
             semaphore: Arc::new(Semaphore::new(config.limit())),
             tag_db: Arc::new(Mutex::new(tag_db)),
-            calibre_client: Arc::new(Mutex::new(calibre_client)),
             active_tasks: Arc::new(Mutex::new(HashSet::new())),
         }
     }
@@ -80,11 +74,6 @@ async fn main() {
         .route("/downloads", post(handle_download))
         .route("/tasks", get(get_active_tasks))
         .route("/imports", post(handle_import))
-        .route("/calibre/metadata", post(handle_metadata_update))
-        .route(
-            "/calibre/books/metadata",
-            post(handle_book_metadata_replace),
-        )
         .route("/tags/query", post(handle_tag_query))
         .with_state(download_manager);
 

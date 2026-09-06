@@ -16,8 +16,8 @@ pub struct Config {
     port: u16,
     #[clap(long, env = "ARCHIVE_OUTPUT")]
     archive_output: String,
-    #[clap(long, env = "CALIBRE_LIBRARY_ROOT")]
-    library_root: String,
+    #[clap(long, env = "METADATA_OUTPUT")]
+    metadata_output: Option<String>,
     #[clap(long, env = "TAG_DB_ROOT")]
     tag_db_root: String,
 
@@ -54,8 +54,8 @@ impl Config {
         &self.archive_output
     }
 
-    pub fn library_root(&self) -> &str {
-        &self.library_root
+    pub fn metadata_output(&self) -> Option<&str> {
+        self.metadata_output.as_deref()
     }
 
     pub fn tag_db_path(&self) -> &str {

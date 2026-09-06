@@ -1,4 +1,3 @@
-pub mod calibre;
 pub mod download;
 pub mod import;
 pub mod tag_query;
@@ -43,11 +42,6 @@ pub struct ImportRequest {
     pub path: String,
 }
 
-#[derive(Serialize)]
-pub struct MetadataUpdateResponse {
-    pub message: String,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct TagQueryRequest {
     pub namespace: String,
@@ -57,14 +51,4 @@ pub struct TagQueryRequest {
 #[derive(Debug, Serialize)]
 pub struct TagQueryResponse {
     pub translated_name: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BookMetadataReplaceRequest {
-    pub url: String,
-}
-
-#[derive(Serialize)]
-pub struct BookMetadataReplaceResponse {
-    pub message: String,
 }

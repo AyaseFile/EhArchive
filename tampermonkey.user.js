@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EhArchive Script
 // @namespace    https://github.com/AyaseFile/EhArchive
-// @version      0.1.8
+// @version      0.1.9
 // @description  嵌入 E-Hentai, 配合后端使用
 // @author       Ayase
 // @match        *://e-hentai.org/*
@@ -213,50 +213,6 @@
         this.style.backgroundColor = colorScheme.buttonBg;
     });
 
-    const metadataUpdateButton = document.createElement('button');
-    metadataUpdateButton.textContent = '更新元数据翻译';
-    metadataUpdateButton.style.padding = '6px 10px';
-    metadataUpdateButton.style.marginTop = '6px';
-    metadataUpdateButton.style.fontSize = '14px';
-    metadataUpdateButton.style.cursor = 'pointer';
-    metadataUpdateButton.style.borderRadius = '4px';
-    metadataUpdateButton.style.fontWeight = 'bold';
-    metadataUpdateButton.style.width = '100%';
-    metadataUpdateButton.style.border = 'none';
-    metadataUpdateButton.style.transition = 'all 0.2s ease';
-    metadataUpdateButton.style.backgroundColor = colorScheme.buttonBg;
-    metadataUpdateButton.style.color = colorScheme.buttonText;
-    metadataUpdateButton.addEventListener('click', sendMetadataUpdateRequest);
-
-    metadataUpdateButton.addEventListener('mouseover', function () {
-        this.style.backgroundColor = colorScheme.buttonHover;
-    });
-    metadataUpdateButton.addEventListener('mouseout', function () {
-        this.style.backgroundColor = colorScheme.buttonBg;
-    });
-
-    const bookMetadataReplaceButton = document.createElement('button');
-    bookMetadataReplaceButton.textContent = '替换书籍元数据';
-    bookMetadataReplaceButton.style.padding = '6px 10px';
-    bookMetadataReplaceButton.style.marginTop = '6px';
-    bookMetadataReplaceButton.style.fontSize = '14px';
-    bookMetadataReplaceButton.style.cursor = 'pointer';
-    bookMetadataReplaceButton.style.borderRadius = '4px';
-    bookMetadataReplaceButton.style.fontWeight = 'bold';
-    bookMetadataReplaceButton.style.width = '100%';
-    bookMetadataReplaceButton.style.border = 'none';
-    bookMetadataReplaceButton.style.transition = 'all 0.2s ease';
-    bookMetadataReplaceButton.style.backgroundColor = colorScheme.buttonBg;
-    bookMetadataReplaceButton.style.color = colorScheme.buttonText;
-    bookMetadataReplaceButton.addEventListener('click', sendBookMetadataReplaceRequest);
-
-    bookMetadataReplaceButton.addEventListener('mouseover', function () {
-        this.style.backgroundColor = colorScheme.buttonHover;
-    });
-    bookMetadataReplaceButton.addEventListener('mouseout', function () {
-        this.style.backgroundColor = colorScheme.buttonBg;
-    });
-
     const importDialog = document.createElement('div');
     importDialog.style.display = 'none';
     importDialog.style.position = 'fixed';
@@ -357,8 +313,6 @@
     } else {
         formContainer.appendChild(downloadButton);
         formContainer.appendChild(importButton);
-        formContainer.appendChild(metadataUpdateButton);
-        formContainer.appendChild(bookMetadataReplaceButton);
     }
     container.appendChild(formContainer);
 
@@ -477,75 +431,6 @@
             ontimeout: function () {
                 console.error('下载请求超时');
                 showNotification('下载请求超时', 'error');
-            }
-        });
-    }
-
-    function sendMetadataUpdateRequest() {
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: `${backendUrl}/calibre/metadata`,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            timeout: 2000,
-            onload: function (response) {
-                try {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText || '{}');
-                        showNotification(data.message || '元数据翻译更新任务已启动', 'success');
-                    } else {
-                        showNotification('元数据翻译更新请求失败', 'error');
-                    }
-                } catch (e) {
-                    console.error('解析响应失败:', e);
-                    showNotification('解析响应失败', 'error');
-                }
-            },
-            onerror: function (e) {
-                console.error('元数据翻译更新请求失败:', e);
-                showNotification('元数据翻译更新请求失败', 'error');
-            },
-            ontimeout: function () {
-                console.error('元数据翻译更新请求超时');
-                showNotification('元数据翻译更新请求超时', 'error');
-            }
-        });
-    }
-
-    function sendBookMetadataReplaceRequest() {
-        const currentUrl = window.location.href;
-
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: `${backendUrl}/calibre/books/metadata`,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            data: JSON.stringify({
-                url: currentUrl
-            }),
-            timeout: 2000,
-            onload: function (response) {
-                try {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText || '{}');
-                        showNotification(data.message || '书籍元数据替换任务已启动', 'success');
-                    } else {
-                        showNotification('书籍元数据替换请求失败', 'error');
-                    }
-                } catch (e) {
-                    console.error('解析响应失败:', e);
-                    showNotification('解析响应失败', 'error');
-                }
-            },
-            onerror: function (e) {
-                console.error('书籍元数据替换请求失败:', e);
-                showNotification('书籍元数据替换请求失败', 'error');
-            },
-            ontimeout: function () {
-                console.error('书籍元数据替换请求超时');
-                showNotification('书籍元数据替换请求超时', 'error');
             }
         });
     }
@@ -728,8 +613,6 @@
             downloadButton.style.marginTop = '6px';
             formContainer.appendChild(downloadButton);
             formContainer.appendChild(importButton);
-            formContainer.appendChild(metadataUpdateButton);
-            formContainer.appendChild(bookMetadataReplaceButton);
         }
 
         updateBubble();
@@ -753,9 +636,6 @@
 
         importButton.style.backgroundColor = colorScheme.buttonBg;
         importButton.style.color = colorScheme.buttonText;
-
-        metadataUpdateButton.style.backgroundColor = colorScheme.buttonBg;
-        metadataUpdateButton.style.color = colorScheme.buttonText;
 
         toggleButton.style.backgroundColor = colorScheme.buttonBg;
         toggleButton.style.color = colorScheme.buttonText;

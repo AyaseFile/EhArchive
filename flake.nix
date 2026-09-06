@@ -5,10 +5,19 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rust-manifest = {
+      url = "https://static.rust-lang.org/dist/channel-rust-1.98.0.toml";
+      flake = false;
+    };
   };
 
   outputs =
-    { nixpkgs, fenix, ... }:
+    {
+      nixpkgs,
+      fenix,
+      rust-manifest,
+      ...
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -30,7 +39,7 @@
         { pkgs, system, ... }:
         with pkgs;
         let
-          rust_toolchain = fenix.packages.${system}.stable.withComponents [
+          rust_toolchain = (fenix.packages.${system}.fromManifestFile rust-manifest).withComponents [
             "cargo"
             "rustc"
             "rust-src"
