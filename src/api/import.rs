@@ -4,6 +4,7 @@ use anyhow::{Result, anyhow, ensure};
 use axum::{Json, extract::State, http::StatusCode};
 use log::{error, info, warn};
 use serde_json::{Value, json};
+use unicode_normalization::UnicodeNormalization;
 
 use super::{
     ImportRequest,
@@ -26,7 +27,7 @@ pub async fn handle_import(
 
 impl DownloadManager {
     pub async fn import_archive(&self, url: String, path: String) -> Result<()> {
-        let archive = PathBuf::from(&path);
+        let archive = resolve_archive_path(&path);
         ensure!(archive.is_file(), "Archive does not exist: {path}");
         ensure!(
             archive
@@ -104,4 +105,20 @@ impl DownloadManager {
         });
         Ok(())
     }
+}
+
+fn resolve_archive_path(path: &str) -> PathBuf {
+    let original = PathBuf::from(path);
+    if original.is_file() {
+        return original;
+    }
+
+    [
+        path.nfc().collect::<String>(),
+        path.nfd().collect::<String>(),
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .find(|candidate| candidate.is_file())
+    .unwrap_or(original)
 }
